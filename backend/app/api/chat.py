@@ -57,6 +57,58 @@ def get_session_messages(session_id: str):
     response = supabase.table("messages").select("*").eq("session_id", session_id).order("created_at", desc=False).execute()
     return response.data
 
+@router.delete("/sessions/{session_id}")
+def delete_session(session_id: str):
+    supabase = get_supabase()
+    try:
+        # Delete messages first to satisfy foreign keys if cascading delete isn't on
+        supabase.table("messages").delete().eq("session_id", session_id).execute()
+        # Delete the session
+        supabase.table("sessions").delete().eq("id", session_id).execute()
+        return {"status": "success", "message": "Session deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ProfileUpdateRequest(BaseModel):
+    user_id: str
+    age: int = None
+    gender: str = None
+    blood_group: str = None
+
+@router.get("/profile")
+def get_profile(user_id: str):
+    supabase = get_supabase()
+    prof_resp = supabase.table("profiles").select("*").eq("user_id", user_id).execute()
+    if not prof_resp.data:
+        return {"status": "ok", "data": None}
+    return {"status": "ok", "data": prof_resp.data[0]}
+
+@router.post("/profile")
+def update_profile(req: ProfileUpdateRequest):
+    supabase = get_supabase()
+    
+    updates = {}
+    if req.age is not None:
+        updates["age"] = req.age
+    if req.gender is not None:
+        updates["gender"] = req.gender
+    if req.blood_group is not None:
+        updates["blood_group"] = req.blood_group
+        
+    if not updates:
+        return {"status": "ok"}
+        
+    prof_resp = supabase.table("profiles").select("id").eq("user_id", req.user_id).execute()
+    
+    if prof_resp.data:
+        res = supabase.table("profiles").update(updates).eq("user_id", req.user_id).execute()
+    else:
+        updates["user_id"] = req.user_id
+        updates["name"] = "Primary Profile"
+        res = supabase.table("profiles").insert([updates]).execute()
+        
+    return {"status": "ok", "data": res.data}
+
 class ChatRequest(BaseModel):
     session_id: str
     message: str

@@ -28,7 +28,11 @@ def extract_text_from_image(file_bytes: bytes) -> str:
     except Exception as e:
         print(f"Error extracting text from Image: {e}")
         text = f"MOCK_EXTRACTION: [Tesseract OCR failed to parse the image. Error: {e}]"
-    return text.strip()
+    
+    clean_text = text.strip()
+    if not clean_text:
+        return "[SYSTEM MESSAGE: The OCR engine could not detect any readable text in this image. The image might be too blurry, compressed, or a non-document image.]"
+    return clean_text
 
 def process_document(file_bytes: bytes, filename: str) -> str:
     """Process document based on extension."""

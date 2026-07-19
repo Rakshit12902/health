@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MessageSquare, LayoutDashboard, Settings, LogOut, PlusCircle } from 'lucide-react'
+import { MessageSquare, LayoutDashboard, Settings, LogOut, PlusCircle, Trash2 } from 'lucide-react'
 
 interface ChatSession {
   id: string
@@ -53,6 +53,25 @@ export function Sidebar() {
       console.error("Error fetching sessions:", e)
     }
     setLoadingHistory(false)
+  }
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to delete this chat?')) return;
+    try {
+      const res = await fetch(`http://localhost:8000/api/chat/sessions/${sessionId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+        if (currentSessionId === sessionId) {
+          router.push('/chat');
+        }
+      } else {
+        alert('Failed to delete chat.');
+      }
+    } catch (error) {
+      console.error("Error deleting session:", error);
+    }
   }
 
   const handleLogout = async () => {
@@ -113,20 +132,32 @@ export function Sidebar() {
              <p className="text-xs text-[var(--color-text-muted)] px-2">No past chats.</p>
            ) : (
              sessions.map(session => (
-               <Link 
-                 key={session.id} 
-                 href={`/chat?session=${session.id}`}
-                 className={`flex items-center gap-3 w-full p-2.5 rounded-lg transition-all ${
-                   currentSessionId === session.id 
-                     ? 'bg-[var(--color-accent-blue)]/20 text-white border border-[var(--color-accent-blue)]/30' 
-                     : 'text-[var(--color-text-muted)] hover:bg-white/5 hover:text-white'
-                 }`}
-               >
-                 <MessageSquare size={14} className={currentSessionId === session.id ? "text-[var(--color-accent-cyan)]" : "opacity-70"} />
-                 <div className="flex-1 text-left truncate text-sm">
-                   {session.title || 'New Chat'}
-                 </div>
-               </Link>
+               <div key={session.id} className="relative group">
+                 <Link 
+                   href={`/chat?session=${session.id}`}
+                   className={`flex items-center gap-3 w-full p-2.5 rounded-lg transition-all pr-8 ${
+                     currentSessionId === session.id 
+                       ? 'bg-[var(--color-accent-blue)]/20 text-white border border-[var(--color-accent-blue)]/30' 
+                       : 'text-[var(--color-text-muted)] hover:bg-white/5 hover:text-white'
+                   }`}
+                 >
+                   <MessageSquare size={14} className={currentSessionId === session.id ? "text-[var(--color-accent-cyan)]" : "opacity-70"} />
+                   <div className="flex-1 text-left truncate text-sm">
+                     {session.title || 'New Chat'}
+                   </div>
+                 </Link>
+                 <button
+                   onClick={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     handleDeleteSession(session.id);
+                   }}
+                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-white/10"
+                   title="Delete Chat"
+                 >
+                   <Trash2 size={14} />
+                 </button>
+               </div>
              ))
            )}
          </div>

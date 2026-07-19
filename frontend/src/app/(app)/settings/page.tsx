@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { User, Mail, Bell, Shield, Key, Clock, Calendar, Droplets } from 'lucide-react'
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
@@ -42,21 +44,29 @@ export default function SettingsPage() {
     setIsSaving(true)
     
     try {
-      const updates = {
-        age: age ? parseInt(age) : null,
-        gender: gender || null,
-        blood_group: bloodGroup || null
+      const response = await fetch('http://localhost:8000/api/chat/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          age: age ? parseInt(age) : null,
+          gender: gender || null,
+          blood_group: bloodGroup || null
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
       }
       
-      const { error } = await supabase.from('profiles').update(updates).eq('user_id', userId)
-      
-      if (error) throw error;
-      alert("Profile updated successfully! Check your dashboard to see your new metrics.")
-    } catch (e) {
-      console.error(e)
-      alert("Failed to update profile.")
+      router.push('/dashboard')
+      router.refresh()
+      return; // Do not call setIsSaving(false) after navigation
+    } catch (e: any) {
+      console.error("Detailed handleSave error:", e)
+      alert("Failed to update profile: " + (e.message || "Unknown error"))
+      setIsSaving(false)
     }
-    setIsSaving(false)
   }
 
   const [activeTab, setActiveTab] = useState('Profile Details')

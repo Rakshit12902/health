@@ -17,9 +17,16 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || 'User')
-        const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
-        if (data) {
-          setProfile(data)
+        try {
+          const res = await fetch(`http://localhost:8000/api/chat/profile?user_id=${user.id}`);
+          if (res.ok) {
+            const result = await res.json();
+            if (result.data) {
+              setProfile(result.data);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to load profile", e);
         }
       }
       setLoading(false)

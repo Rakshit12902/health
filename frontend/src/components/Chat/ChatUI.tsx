@@ -363,32 +363,53 @@ export function ChatUI() {
     <div className="flex flex-col h-full bg-[var(--color-bg-primary)]">
       {/* Top: Avatar Area */}
       <div className="h-32 flex flex-col items-center justify-center border-b border-white/5 relative">
-        <motion.div 
-          onClick={handleAvatarClick}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          animate={isSpeaking ? {
-            scale: [1, 1.2, 1],
-            boxShadow: [
-              "0 0 20px var(--color-accent-glow)",
-              "0 0 60px var(--color-accent-cyan)",
-              "0 0 20px var(--color-accent-glow)"
-            ]
-          } : {
-            scale: [1, 1.05, 1],
-            boxShadow: "0 0 15px var(--color-accent-glow)"
-          }}
-          transition={{
-            duration: isSpeaking ? 0.8 : 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className={`w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent-blue)] to-[var(--color-accent-cyan)] flex items-center justify-center ${isSpeaking ? 'cursor-pointer' : ''}`}
-        >
-           <div className="w-12 h-12 rounded-full bg-[var(--color-bg-primary)] opacity-50 flex items-center justify-center">
-             {isSpeaking && <Square size={14} className="text-white opacity-80" fill="currentColor" />}
-           </div>
-        </motion.div>
+        <div className="relative flex items-center justify-center w-24 h-24">
+          {isSpeaking && (
+            <>
+              <motion.div
+                animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-full border-2 border-[var(--color-accent-cyan)]"
+              />
+              <motion.div
+                animate={{ scale: [1, 1.8, 1], opacity: [0.2, 0, 0.2] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                className="absolute inset-0 rounded-full border border-[var(--color-accent-blue)]"
+              />
+              <motion.div
+                animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.1, 0.5] }}
+                transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-full bg-[var(--color-accent-cyan)] blur-xl"
+              />
+            </>
+          )}
+          
+          <motion.div 
+            onClick={handleAvatarClick}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            animate={isSpeaking ? {
+              boxShadow: [
+                "0 0 20px var(--color-accent-glow)",
+                "0 0 50px var(--color-accent-cyan)",
+                "0 0 20px var(--color-accent-glow)"
+              ]
+            } : {
+              scale: [1, 1.05, 1],
+              boxShadow: "0 0 15px var(--color-accent-glow)"
+            }}
+            transition={{
+              duration: isSpeaking ? 1 : 3,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className={`w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent-blue)] to-[var(--color-accent-cyan)] flex items-center justify-center relative z-10 ${isSpeaking ? 'cursor-pointer' : ''}`}
+          >
+             <div className="w-12 h-12 rounded-full bg-[var(--color-bg-primary)] opacity-80 flex items-center justify-center">
+               {isSpeaking && <Square size={14} className="text-[var(--color-accent-cyan)]" fill="currentColor" />}
+             </div>
+          </motion.div>
+        </div>
         {isSpeaking && (
             <div className="absolute bottom-2 text-xs text-[var(--color-accent-cyan)] animate-pulse">Tap avatar to stop speaking</div>
         )}
