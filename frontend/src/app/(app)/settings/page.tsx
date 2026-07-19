@@ -44,7 +44,8 @@ export default function SettingsPage() {
     setIsSaving(true)
     
     try {
-      const response = await fetch('http://localhost:8000/api/chat/profile', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${baseUrl}/api/chat/profile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

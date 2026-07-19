@@ -46,8 +46,10 @@ export function ChatUI() {
   }, [messages])
 
   const fetchMessages = async (sid: string) => {
+    setLoadingHistory(true)
     try {
-      const res = await fetch(`http://localhost:8000/api/chat/sessions/${sid}/messages`)
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${baseUrl}/api/chat/sessions/${sid}/messages`)
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
         setMessages(data.map(m => ({
@@ -60,6 +62,8 @@ export function ChatUI() {
       }
     } catch (e) {
       console.error("Failed to fetch messages", e)
+    } finally {
+      setLoadingHistory(false)
     }
   }
 
@@ -148,7 +152,8 @@ export function ChatUI() {
     formData.append('file', blob, 'voice.wav')
 
     try {
-      const res = await fetch('http://localhost:8000/api/voice/transcribe', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${baseUrl}/api/voice/transcribe`, {
         method: 'POST',
         body: formData,
       })
@@ -178,7 +183,8 @@ export function ChatUI() {
     formData.append('session_id', sessionId)
 
     try {
-      const response = await fetch('http://localhost:8000/api/documents/upload', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${baseUrl}/api/documents/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -198,9 +204,10 @@ export function ChatUI() {
   }
 
   const pollDocumentStatus = async (docId: string, sid: string) => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/documents/${docId}/status`);
+        const res = await fetch(`${baseUrl}/api/documents/${docId}/status`);
         const data = await res.json();
         if (data.processing_status === 'completed' || data.processing_status === 'failed') {
           clearInterval(interval);
@@ -242,6 +249,7 @@ export function ChatUI() {
     abortControllerRef.current = new AbortController()
 
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       let activeSessionId = sessionId;
       
       // Auto-create session if it doesn't exist
@@ -252,7 +260,7 @@ export function ChatUI() {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-           const createRes = await fetch(`http://localhost:8000/api/chat/sessions?user_id=${user.id}&title=${encodeURIComponent(messageText.substring(0, 30))}`, {
+           const createRes = await fetch(`${baseUrl}/api/chat/sessions?user_id=${user.id}&title=${encodeURIComponent(messageText.substring(0, 30))}`, {
              method: 'POST'
            });
            const newSession = await createRes.json();
@@ -268,7 +276,7 @@ export function ChatUI() {
         }
       }
 
-      const response = await fetch('http://localhost:8000/api/chat/stream', {
+      const response = await fetch(`${baseUrl}/api/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

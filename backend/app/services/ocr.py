@@ -22,8 +22,12 @@ def extract_text_from_image(file_bytes: bytes) -> str:
     text = ""
     try:
         image = Image.open(io.BytesIO(file_bytes))
-        # Point to the Tesseract installation path
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        import os
+        if os.name == 'nt':
+            pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        else:
+            pytesseract.pytesseract.tesseract_cmd = 'tesseract'
+            
         text = pytesseract.image_to_string(image)
     except Exception as e:
         print(f"Error extracting text from Image: {e}")

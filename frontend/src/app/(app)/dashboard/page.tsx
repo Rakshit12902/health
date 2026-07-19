@@ -18,7 +18,8 @@ export default function DashboardPage() {
       if (user) {
         setUserName(user.user_metadata?.full_name || user.email?.split('@')[0] || 'User')
         try {
-          const res = await fetch(`http://localhost:8000/api/chat/profile?user_id=${user.id}`);
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          const res = await fetch(`${baseUrl}/api/chat/profile?user_id=${user.id}`);
           if (res.ok) {
             const result = await res.json();
             if (result.data) {

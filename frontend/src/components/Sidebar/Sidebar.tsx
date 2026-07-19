@@ -44,7 +44,8 @@ export function Sidebar() {
   const fetchSessions = async () => {
     setLoadingHistory(true)
     try {
-      const res = await fetch(`http://localhost:8000/api/chat/sessions?user_id=${userId}`)
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${baseUrl}/api/chat/sessions?user_id=${userId}`)
       const data = await res.json()
       if (Array.isArray(data)) {
         setSessions(data)
@@ -58,7 +59,8 @@ export function Sidebar() {
   const handleDeleteSession = async (sessionId: string) => {
     if (!confirm('Are you sure you want to delete this chat?')) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/chat/sessions/${sessionId}`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${baseUrl}/api/chat/sessions/${sessionId}`, {
         method: 'DELETE',
       });
       if (res.ok) {
