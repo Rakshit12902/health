@@ -18,6 +18,7 @@ export function ChatUI() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
