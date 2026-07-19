@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0A1628;
+  --color-bg-secondary: #0D1B2A;
+  --color-bg-glass: rgba(255, 255, 255, 0.04);
+  --color-accent-blue: #1E90FF;
+  --color-accent-cyan: #00D4FF;
+  --color-accent-glow: rgba(30, 144, 255, 0.3);
+  --color-text-primary: #E8F4FD;
+  --color-text-muted: #6B8FAB;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+}
+
+:root {
+  --background: #0A1628;
+  --foreground: #E8F4FD;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif; /* We will add Inter font later */
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+}
