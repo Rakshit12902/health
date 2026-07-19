@@ -38,7 +38,8 @@ export function UploadArea() {
   const pollStatus = async (docId: string, fileIndex: number) => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/documents/${docId}/status`)
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const res = await fetch(`${baseUrl}/api/documents/${docId}/status`)
         if (res.ok) {
           const data = await res.json()
           if (data.processing_status === 'completed' || data.processing_status === 'failed') {
@@ -72,8 +73,9 @@ export function UploadArea() {
       const fileIndex = files.length // Approximate index
 
       try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         // Create a new chat session for this report
-        const sessionRes = await fetch(`http://localhost:8000/api/chat/sessions?user_id=${user.id}&title=Report:%20${encodeURIComponent(f.name)}`, { method: 'POST' })
+        const sessionRes = await fetch(`${baseUrl}/api/chat/sessions?user_id=${user.id}&title=Report:%20${encodeURIComponent(f.name)}`, { method: 'POST' })
         const session = await sessionRes.json()
 
         const formData = new FormData()
@@ -86,7 +88,7 @@ export function UploadArea() {
           return arr
         })
 
-        const uploadRes = await fetch('http://localhost:8000/api/documents/upload', {
+        const uploadRes = await fetch(`${baseUrl}/api/documents/upload`, {
           method: 'POST',
           body: formData
         })

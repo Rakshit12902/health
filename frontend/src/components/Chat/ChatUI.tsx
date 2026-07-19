@@ -189,14 +189,22 @@ export function ChatUI() {
         method: 'POST',
         body: formData,
       });
+      
+      if (!response.ok) {
+        throw new Error("Upload failed on server");
+      }
+      
       const data = await response.json();
       
       if (data.document_id) {
         // Poll for status
         pollDocumentStatus(data.document_id, sessionId)
+      } else {
+        throw new Error("No document ID returned");
       }
     } catch (err) {
       console.error("Upload failed", err)
+      alert("Failed to upload document. The server might have encountered an error.")
       setIsUploading(false)
     }
     
