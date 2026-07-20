@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { UploadArea } from "@/components/Upload/UploadArea"
-import { ClinicMap } from "@/components/Map/ClinicMap"
+import dynamic from 'next/dynamic'
+
+const ClinicMap = dynamic(() => import('@/components/Map/ClinicMap').then(mod => mod.ClinicMap), {
+  ssr: false,
+  loading: () => <div className="h-96 glass-panel rounded-2xl flex items-center justify-center border border-[var(--color-accent-blue)]/30"><div className="w-8 h-8 border-4 border-[var(--color-accent-cyan)] border-t-transparent rounded-full animate-spin"></div></div>
+})
 import { Activity, User as UserIcon, Droplets, Calendar, FileText } from "lucide-react"
 
 export default function DashboardPage() {
