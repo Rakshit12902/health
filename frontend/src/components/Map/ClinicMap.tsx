@@ -6,9 +6,11 @@ import { MapPin, Navigation, Phone, Star, Loader2 } from 'lucide-react'
 export function ClinicMap() {
   const [clinics, setClinics] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [location, setLocation] = useState<{lat: number, lon: number} | null>(null)
 
   useEffect(() => {
     const fetchClinics = async (lat: number, lon: number) => {
+      setLocation({ lat, lon })
       setLoading(true)
       try {
         const query = `
@@ -79,16 +81,22 @@ export function ClinicMap() {
       <div className="flex-1 glass-panel overflow-hidden h-96 relative rounded-2xl border border-[var(--color-accent-blue)]/30">
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-bg-primary)] to-transparent pointer-events-none z-10 opacity-60"></div>
         
-        <iframe 
-          width="100%" 
-          height="100%" 
-          style={{ border: 0 }} 
-          loading="lazy" 
-          allowFullScreen 
-          referrerPolicy="no-referrer-when-downgrade"
-          src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d15228.461159312214!2d78.435728!3d17.406240!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1shospitals%20near%20me!5e0!3m2!1sen!2sin!4v1714571891234!5m2!1sen!2sin"
-          className="grayscale invert opacity-80" 
-        ></iframe>
+        {location ? (
+          <iframe 
+            width="100%" 
+            height="100%" 
+            style={{ border: 0 }} 
+            loading="lazy" 
+            allowFullScreen 
+            referrerPolicy="no-referrer-when-downgrade"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.lon - 0.05},${location.lat - 0.05},${location.lon + 0.05},${location.lat + 0.05}&layer=mapnik&marker=${location.lat},${location.lon}`}
+            className="grayscale invert opacity-80" 
+          ></iframe>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)]">
+            Locating you...
+          </div>
+        )}
       </div>
 
       {/* Recommended Clinics List */}
