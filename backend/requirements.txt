@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy
+alembic
+psycopg2-binary
+pydantic
+python-dotenv
+supabase
+groq
+pymupdf
+pytesseract
+Pillow
+faster-whisper
+gTTS
+python-multipart
