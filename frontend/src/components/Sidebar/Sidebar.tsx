@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { MessageSquare, LayoutDashboard, Settings, LogOut, PlusCircle, Trash2 } from 'lucide-react'
+import { MessageSquare, LayoutDashboard, Settings, LogOut, PlusCircle, Trash2, Pill } from 'lucide-react'
 
 interface ChatSession {
   id: string
@@ -84,6 +84,7 @@ export function Sidebar() {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Chat', path: '/chat', icon: MessageSquare },
+    { name: 'Prescriptions', path: '/prescriptions', icon: Pill },
   ]
 
   return (

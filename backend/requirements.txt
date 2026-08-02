@@ -13,3 +13,7 @@ Pillow
 faster-whisper
 gTTS
 python-multipart
+pywebpush
+apscheduler
+
+pytz

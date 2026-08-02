@@ -211,3 +211,76 @@ def generate_chat_stream(message: str, extracted_text: str = "", language: str =
     for chunk in stream:
         if chunk.choices[0].delta.content is not None:
             yield chunk.choices[0].delta.content
+
+import json
+
+def extract_metrics_from_report(extracted_text: str):
+    """Uses Groq to extract health metrics from a raw medical report text as JSON."""
+    if not extracted_text or len(extracted_text) < 10:
+        return []
+        
+    prompt = f"""You are a medical data extraction tool. Extract numerical health metrics (like Hemoglobin, WBC, Sugar, Cholesterol, etc.) from the following medical report text.
+    Return ONLY a JSON object with a single key "metrics" which is a list of objects.
+    Each object must have exactly these keys:
+    - "metric_name": String (e.g., "Hemoglobin", "WBC")
+    - "metric_value": Float (e.g., 14.2)
+    - "unit": String (e.g., "g/dL", "10^3/uL")
+    - "reference_range": String (e.g., "13.0 - 17.0")
+    - "flag": String (must be one of: "normal", "high", "low")
+    
+    If no metrics are found, return {{"metrics": []}}.
+
+    Report Text:
+    {extracted_text}
+    """
+    
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            max_tokens=1024
+        )
+        
+        content = response.choices[0].message.content
+        parsed = json.loads(content)
+        return parsed.get("metrics", [])
+    except Exception as e:
+        print(f"Failed to extract metrics: {e}")
+        return []
+
+def extract_prescriptions_from_report(extracted_text: str):
+    """Uses Groq to extract medicines from a raw prescription text as JSON."""
+    if not extracted_text or len(extracted_text) < 10:
+        return []
+        
+    prompt = f"""You are a medical data extraction tool. Extract prescribed medications from the following medical prescription text.
+    Return ONLY a JSON object with a single key "medicines" which is a list of objects.
+    Each object must have exactly these keys:
+    - "medicine_name": String (e.g., "Paracetamol 500mg", "Amoxicillin")
+    - "dosage": String (e.g., "1 tablet", "5 ml") - leave empty string if not found
+    - "frequency": String (e.g., "Twice a day", "1-0-1", "After meals") - leave empty string if not found
+    - "duration": String (e.g., "5 days", "1 month") - leave empty string if not found
+    
+    If no medicines are found in the text, return {{"medicines": []}}.
+
+    Prescription Text:
+    {extracted_text}
+    """
+    
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            max_tokens=1024
+        )
+        
+        content = response.choices[0].message.content
+        parsed = json.loads(content)
+        return parsed.get("medicines", [])
+    except Exception as e:
+        print(f"Failed to extract prescriptions: {e}")
+        return []

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import uuid
 import time
 from app.services.ocr import process_document
+from app.services.llm import extract_metrics_from_report, extract_prescriptions_from_report
 from app.core.db import get_supabase
 
 router = APIRouter()
@@ -27,6 +28,52 @@ def background_process_document(document_id: str, file_bytes: bytes, filename: s
             "processing_status": "completed",
             "extracted_text": extracted_text
         }).eq("id", document_id).execute()
+        
+        # Get profile_id from session
+        session_res = supabase.table("sessions").select("profile_id").eq("id", session_id).execute()
+        if session_res.data:
+            profile_id = session_res.data[0]["profile_id"]
+            
+            # Extract metrics using AI
+            metrics = extract_metrics_from_report(extracted_text)
+            
+            if metrics:
+                # Insert metrics into DB
+                records = []
+                for m in metrics:
+                    records.append({
+                        "profile_id": profile_id,
+                        "document_id": document_id,
+                        "metric_name": m.get("metric_name", ""),
+                        "metric_value": float(m.get("metric_value", 0)),
+                        "unit": m.get("unit", ""),
+                        "reference_range": m.get("reference_range", ""),
+                        "flag": m.get("flag", "normal")
+                    })
+                if records:
+                    supabase.table("metrics").insert(records).execute()
+                    
+            # Extract prescriptions using AI
+            prescriptions = extract_prescriptions_from_report(extracted_text)
+            
+            if prescriptions:
+                # Need user_id for prescriptions
+                user_res = supabase.table("sessions").select("user_id").eq("id", session_id).execute()
+                if user_res.data:
+                    user_id = user_res.data[0]["user_id"]
+                    
+                    presc_records = []
+                    for p in prescriptions:
+                        presc_records.append({
+                            "user_id": user_id,
+                            "document_id": document_id,
+                            "medicine_name": p.get("medicine_name", ""),
+                            "dosage": p.get("dosage", ""),
+                            "frequency": p.get("frequency", ""),
+                            "duration": p.get("duration", "")
+                        })
+                    if presc_records:
+                        supabase.table("prescriptions").insert(presc_records).execute()
         
     except Exception as e:
         print(f"Failed to process document: {e}")

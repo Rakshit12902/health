@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Mic, Paperclip, StopCircle, Square, Copy, RefreshCw, Check, Loader2, FileText } from 'lucide-react'
+import { Send, Mic, Paperclip, StopCircle, Square, Copy, RefreshCw, Check, Loader2, FileText, Volume2, VolumeX } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams, useRouter } from 'next/navigation'
 
@@ -324,7 +324,6 @@ export function ChatUI() {
               }
               if (data.event === 'done') {
                 setIsGenerating(false);
-                playTTS(fullAiResponse)
               }
             } catch (e) {
               // Ignore partial JSON parsing errors
@@ -445,7 +444,14 @@ export function ChatUI() {
               
               {/* Message Actions (ChatGPT style) */}
               {msg.role === 'ai' && msg.content && (
-                <div className="absolute -bottom-3 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--color-bg-secondary)] border border-white/10 rounded-lg p-1 shadow-lg">
+                <div className="absolute -bottom-3 right-4 flex items-center gap-1 bg-[var(--color-bg-secondary)] border border-white/10 rounded-lg p-1 shadow-lg">
+                  <button 
+                    onClick={() => isSpeaking ? stopAudio() : playTTS(msg.content)}
+                    className="p-1.5 text-[var(--color-text-muted)] hover:text-white transition-colors rounded-md hover:bg-white/5"
+                    title={isSpeaking ? "Stop Speaking" : "Read Aloud"}
+                  >
+                    {isSpeaking ? <VolumeX size={14} className="text-[var(--color-danger)]" /> : <Volume2 size={14} />}
+                  </button>
                   <button 
                     onClick={() => handleCopy(msg.content, msg.id)}
                     className="p-1.5 text-[var(--color-text-muted)] hover:text-white transition-colors rounded-md hover:bg-white/5"

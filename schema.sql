@@ -87,3 +87,38 @@ CREATE POLICY "Users can update their own data" ON public.users FOR UPDATE USING
 
 -- Note: In a production app, you would add similar RLS policies to profiles, sessions, etc.
 -- matching on user_id = auth.uid()
+
+-- 7. Prescriptions Table
+CREATE TABLE public.prescriptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    document_id UUID REFERENCES public.documents(id) ON DELETE SET NULL,
+    medicine_name VARCHAR NOT NULL,
+    dosage VARCHAR,
+    frequency VARCHAR,
+    duration VARCHAR,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 8. Pill Reminders Table
+CREATE TABLE public.pill_reminders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    prescription_id UUID REFERENCES public.prescriptions(id) ON DELETE CASCADE,
+    time_of_day VARCHAR NOT NULL, -- e.g., 'morning', 'afternoon', 'night'
+    taken_status BOOLEAN DEFAULT false,
+    date_taken DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 9. Doctor Links Table
+CREATE TABLE public.doctor_links (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    secure_token VARCHAR UNIQUE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.prescriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pill_reminders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.doctor_links ENABLE ROW LEVEL SECURITY;

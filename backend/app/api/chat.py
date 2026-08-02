@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import json
+import uuid
+from datetime import datetime, timedelta
 from app.services.llm import generate_chat_stream
 from app.core.db import get_supabase
 
@@ -108,6 +110,86 @@ def update_profile(req: ProfileUpdateRequest):
         res = supabase.table("profiles").insert([updates]).execute()
         
     return {"status": "ok", "data": res.data}
+
+@router.get("/metrics")
+def get_metrics(profile_id: str):
+    supabase = get_supabase()
+    try:
+        res = supabase.table("metrics").select("*").eq("profile_id", profile_id).order("date_recorded", desc=False).execute()
+        return {"status": "ok", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ShareRequest(BaseModel):
+    user_id: str
+    expires_in_days: int = 7
+
+@router.post("/doctor-links")
+def create_doctor_link(req: ShareRequest):
+    supabase = get_supabase()
+    try:
+        # Generate a unique token
+        token = str(uuid.uuid4())
+        # Calculate expiration
+        expires_at = (datetime.utcnow() + timedelta(days=req.expires_in_days)).isoformat()
+        
+        # Save to DB
+        res = supabase.table("doctor_links").insert({
+            "user_id": req.user_id,
+            "secure_token": token,
+            "expires_at": expires_at
+        }).execute()
+        
+        return {"status": "ok", "token": token, "expires_at": expires_at}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/doctor-links/{token}")
+def get_shared_patient_data(token: str):
+    supabase = get_supabase()
+    try:
+        # 1. Validate token
+        link_resp = supabase.table("doctor_links").select("*").eq("secure_token", token).execute()
+        if not link_resp.data:
+            raise HTTPException(status_code=404, detail="Invalid or expired link")
+            
+        link_data = link_resp.data[0]
+        
+        # Check expiration (basic check, could also rely on DB timezone)
+        expires_at = datetime.fromisoformat(link_data["expires_at"].replace("Z", "+00:00"))
+        if datetime.utcnow().replace(tzinfo=expires_at.tzinfo) > expires_at:
+            raise HTTPException(status_code=403, detail="Link has expired")
+            
+        user_id = link_data["user_id"]
+        
+        # 2. Fetch Profile Info
+        prof_resp = supabase.table("profiles").select("*").eq("user_id", user_id).execute()
+        profile = prof_resp.data[0] if prof_resp.data else None
+        
+        # 3. Fetch Metrics
+        metrics = []
+        if profile:
+            met_resp = supabase.table("metrics").select("*").eq("profile_id", profile["id"]).order("date_recorded", desc=True).execute()
+            metrics = met_resp.data
+            
+        # 4. Fetch Prescriptions
+        presc_resp = supabase.table("prescriptions").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        prescriptions = presc_resp.data
+        
+        return {
+            "status": "ok",
+            "data": {
+                "profile": profile,
+                "metrics": metrics,
+                "prescriptions": prescriptions
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 class ChatRequest(BaseModel):
     session_id: str

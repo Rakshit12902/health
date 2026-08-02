@@ -16,6 +16,94 @@ export default function SettingsPage() {
   const [gender, setGender] = useState('')
   const [bloodGroup, setBloodGroup] = useState('')
   
+  const [pushStatus, setPushStatus] = useState('Checking...')
+  
+  useEffect(() => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) {
+          reg.pushManager.getSubscription().then(sub => {
+            if (sub) {
+              setPushStatus('Enabled')
+            } else {
+              setPushStatus('Not Enabled')
+            }
+          })
+        } else {
+          setPushStatus('Not Enabled')
+        }
+      })
+    } else {
+      setPushStatus('Not Supported')
+    }
+  }, [])
+
+  const handleEnableNotifications = async () => {
+    if (pushStatus === 'Not Supported') {
+      alert("Push notifications are not supported in this browser.")
+      return
+    }
+    
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert("You blocked notifications. Please enable them in your browser settings.")
+        return;
+      }
+      
+      let registration = await navigator.serviceWorker.getRegistration()
+      if (!registration) {
+        registration = await navigator.serviceWorker.register('/sw.js')
+      }
+      
+      // Convert VAPID key to Uint8Array
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidPublicKey) {
+         alert("VAPID key missing from environment");
+         return;
+      }
+      
+      const padding = '='.repeat((4 - vapidPublicKey.length % 4) % 4);
+      const base64 = (vapidPublicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: outputArray
+      });
+      
+      if (!userId) return;
+      const subJSON = subscription.toJSON();
+      
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${baseUrl}/api/notifications/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          endpoint: subJSON.endpoint,
+          p256dh: subJSON.keys?.p256dh,
+          auth: subJSON.keys?.auth
+        })
+      });
+      
+      if (response.ok) {
+        setPushStatus('Enabled')
+        alert("Push notifications successfully enabled!")
+      } else {
+         const d = await response.json()
+         throw new Error(d.detail || "Server error")
+      }
+    } catch (e: any) {
+      console.error(e)
+      alert("Failed to enable notifications: " + e.message)
+    }
+  }
+
   const [isSaving, setIsSaving] = useState(false)
   const supabase = createClient()
 
@@ -237,7 +325,43 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {activeTab !== 'Profile Details' && (
+            {activeTab === 'Notifications' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                 <div className="flex items-center gap-4 mb-6 pb-4 border-b border-white/5">
+                   <div className="w-12 h-12 rounded-full bg-[var(--color-accent-blue)]/20 flex items-center justify-center text-[var(--color-accent-cyan)]">
+                     <Bell size={24} />
+                   </div>
+                   <div>
+                     <h4 className="text-lg font-medium text-white">Push Notifications</h4>
+                     <p className="text-sm text-[var(--color-text-muted)]">Receive daily pill reminders directly on your device.</p>
+                   </div>
+                 </div>
+                 
+                 <div className="flex items-center justify-between p-4 glass-panel rounded-xl border border-white/5">
+                    <div>
+                        <h5 className="font-medium text-white">Browser Notifications</h5>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-1">Status: <span className={pushStatus === 'Enabled' ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'}>{pushStatus}</span></p>
+                    </div>
+                    {pushStatus !== 'Enabled' ? (
+                        <button 
+                          onClick={handleEnableNotifications}
+                          className="px-4 py-2 bg-[var(--color-accent-blue)] hover:bg-[var(--color-accent-cyan)] text-white font-medium rounded-lg transition-colors shadow-[0_0_15px_var(--color-accent-glow)]"
+                        >
+                          Enable
+                        </button>
+                    ) : (
+                        <button 
+                          disabled
+                          className="px-4 py-2 bg-white/10 text-[var(--color-success)] font-medium rounded-lg cursor-not-allowed flex items-center gap-2"
+                        >
+                          <Bell size={16} /> Subscribed
+                        </button>
+                    )}
+                 </div>
+              </div>
+            )}
+
+            {activeTab !== 'Profile Details' && activeTab !== 'Notifications' && (
               <div className="flex flex-col items-center justify-center h-48 text-center animate-in fade-in duration-300">
                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 text-[var(--color-text-muted)]">
                    <Clock size={24} />
