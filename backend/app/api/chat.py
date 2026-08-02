@@ -218,6 +218,10 @@ async def chat_stream(req: ChatRequest):
 
     def event_generator():
         try:
+            # Fetch message history
+            history_resp = supabase.table("messages").select("sender_type, content").eq("session_id", req.session_id).order("created_at", desc=False).execute()
+            history = history_resp.data if history_resp.data else []
+            
             # Save user message to DB
             supabase.table("messages").insert({
                 "session_id": req.session_id,
@@ -226,7 +230,7 @@ async def chat_stream(req: ChatRequest):
             }).execute()
             
             full_ai_response = ""
-            for token in generate_chat_stream(req.message, extracted_text, req.language, medical_history):
+            for token in generate_chat_stream(req.message, extracted_text, req.language, medical_history, history):
                 full_ai_response += token
                 yield f"data: {json.dumps({'token': token})}\n\n"
             

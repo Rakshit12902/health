@@ -169,8 +169,8 @@ export function ChatUI() {
 
   // --- File Upload Control ---
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
     // If no session, create one first or alert user
     if (!sessionId) {
@@ -179,32 +179,43 @@ export function ChatUI() {
     }
 
     setIsUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('session_id', sessionId)
-
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    
+    let uploadedDocIds: string[] = [];
+    
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${baseUrl}/api/documents/upload`, {
-        method: 'POST',
-        body: formData,
+      // Upload all files concurrently
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('session_id', sessionId)
+        
+        const response = await fetch(`${baseUrl}/api/documents/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) throw new Error(`Upload failed for ${file.name}`);
+        const data = await response.json();
+        if (data.document_id) {
+            return data.document_id;
+        }
+        throw new Error("No document ID");
       });
       
-      if (!response.ok) {
-        throw new Error("Upload failed on server");
-      }
+      const docIds = await Promise.all(uploadPromises);
+      uploadedDocIds = docIds.filter(id => id !== undefined);
       
-      const data = await response.json();
-      
-      if (data.document_id) {
-        // Poll for status
-        pollDocumentStatus(data.document_id, sessionId)
+      // Poll for status of all docs
+      if (uploadedDocIds.length > 0) {
+        pollMultipleDocumentsStatus(uploadedDocIds, sessionId);
       } else {
-        throw new Error("No document ID returned");
+        setIsUploading(false);
       }
+      
     } catch (err) {
       console.error("Upload failed", err)
-      alert("Failed to upload document. The server might have encountered an error.")
+      alert("Failed to upload documents. The server might have encountered an error.")
       setIsUploading(false)
     }
     
@@ -212,7 +223,47 @@ export function ChatUI() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const pollMultipleDocumentsStatus = async (docIds: string[], sid: string) => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    let completedCount = 0;
+    let failedCount = 0;
+    
+    const interval = setInterval(async () => {
+      try {
+        let allDone = true;
+        
+        for (const docId of docIds) {
+            const res = await fetch(`${baseUrl}/api/documents/${docId}/status`);
+            const data = await res.json();
+            if (data.processing_status !== 'completed' && data.processing_status !== 'failed') {
+                allDone = false;
+                break;
+            }
+        }
+        
+        if (allDone) {
+            clearInterval(interval);
+            setIsUploading(false);
+            
+            // Just push the last doc to URL for simplicity, but the backend can fetch all session docs
+            const lastDocId = docIds[docIds.length - 1];
+            window.history.replaceState({}, '', `/chat?session=${sid}&doc=${lastDocId}`);
+            
+            setMessages(prev => [...prev, {
+              id: crypto.randomUUID(),
+              role: 'ai',
+              content: `📄 I've successfully analyzed your ${docIds.length} document(s). What would you like to know about them?`
+            }]);
+        }
+      } catch (e) {
+        clearInterval(interval);
+        setIsUploading(false);
+      }
+    }, 2000);
+  }
+
   const pollDocumentStatus = async (docId: string, sid: string) => {
+    // Kept for backward compatibility if needed
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const interval = setInterval(async () => {
       try {
@@ -222,7 +273,7 @@ export function ChatUI() {
           clearInterval(interval);
           setIsUploading(false);
           if (data.processing_status === 'completed') {
-            router.push(`/chat?session=${sid}&doc=${docId}`);
+            window.history.replaceState({}, '', `/chat?session=${sid}&doc=${docId}`);
             setMessages(prev => [...prev, {
               id: crypto.randomUUID(),
               role: 'ai',
@@ -276,7 +327,7 @@ export function ChatUI() {
            if (newSession && newSession.id) {
              activeSessionId = newSession.id;
              // Update URL silently
-             router.push(`/chat?session=${activeSessionId}`);
+             window.history.replaceState({}, '', `/chat?session=${activeSessionId}`);
            }
         }
         
@@ -450,7 +501,7 @@ export function ChatUI() {
                     className="p-1.5 text-[var(--color-text-muted)] hover:text-white transition-colors rounded-md hover:bg-white/5"
                     title={isSpeaking ? "Stop Speaking" : "Read Aloud"}
                   >
-                    {isSpeaking ? <VolumeX size={14} className="text-[var(--color-danger)]" /> : <Volume2 size={14} />}
+                    {isSpeaking ? <Square size={14} className="text-[var(--color-danger)]" fill="currentColor" /> : <Volume2 size={14} />}
                   </button>
                   <button 
                     onClick={() => handleCopy(msg.content, msg.id)}
@@ -482,17 +533,33 @@ export function ChatUI() {
           </div>
         )}
         <div ref={messagesEndRef} />
+        
+        {/* Full screen upload overlay */}
+        <AnimatePresence>
+          {isUploading && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--color-bg-primary)]/80 backdrop-blur-sm rounded-3xl"
+            >
+              <div className="glass-panel p-8 rounded-2xl flex flex-col items-center border border-[var(--color-accent-cyan)]/30 shadow-[0_0_30px_var(--color-accent-glow)]">
+                 <div className="relative mb-4">
+                   <div className="w-16 h-16 border-4 border-white/10 border-t-[var(--color-accent-cyan)] rounded-full animate-spin"></div>
+                   <FileText className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[var(--color-accent-cyan)] opacity-70" size={24} />
+                 </div>
+                 <h3 className="text-xl font-bold text-white mb-2">Analyzing Reports</h3>
+                 <p className="text-sm text-[var(--color-text-muted)] max-w-[200px] text-center">
+                   Extracting medical data and preparing insights...
+                 </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Bottom: Input Area */}
       <div className="p-4 border-t border-white/5 bg-[var(--color-bg-primary)]/80 backdrop-blur-md">
-        
-        {/* Upload Status */}
-        {isUploading && (
-          <div className="mb-2 ml-4 flex items-center gap-2 text-xs text-[var(--color-accent-cyan)] animate-pulse">
-            <Loader2 size={12} className="animate-spin" /> Uploading and analyzing document...
-          </div>
-        )}
 
         <div className="glass-panel flex items-center p-2 rounded-full border border-white/10 shadow-lg relative focus-within:border-[var(--color-accent-cyan)]/50 focus-within:shadow-[0_0_15px_var(--color-accent-glow)] transition-all">
           <input 
@@ -500,6 +567,7 @@ export function ChatUI() {
             ref={fileInputRef} 
             className="hidden" 
             accept="image/*,.pdf" 
+            multiple
             onChange={handleFileUpload} 
           />
           <button 

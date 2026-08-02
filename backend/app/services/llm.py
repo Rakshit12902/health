@@ -190,19 +190,29 @@ Base report explanations primarily on the uploaded Report Context and use genera
 Always end EVERY response with exactly:
 
 ⚠️ This is informational only and not a medical diagnosis."""
-def generate_chat_stream(message: str, extracted_text: str = "", language: str = "en", medical_history: str = "None"):
+def generate_chat_stream(message: str, extracted_text: str = "", language: str = "en", medical_history: str = "None", history: list = None):
     """Streams response from Groq Llama 3.1 70B."""
-    
+    if history is None:
+        history = []
+        
     formatted_prompt = SYSTEM_PROMPT.format(language=language, medical_history=medical_history, report_context=extracted_text)
     
     context_msg = f"Report Context:\n{extracted_text}\n\nUser Question: {message}" if extracted_text else message
     
+    # Build messages array starting with system prompt
+    messages = [{"role": "system", "content": formatted_prompt}]
+    
+    # Add historical messages (limit to last 10 for context window safety)
+    for msg in history[-10:]:
+        role = "assistant" if msg.get("sender_type") == "ai" else "user"
+        messages.append({"role": role, "content": msg.get("content", "")})
+        
+    # Append the current message
+    messages.append({"role": "user", "content": context_msg})
+    
     stream = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": formatted_prompt},
-            {"role": "user", "content": context_msg}
-        ],
+        messages=messages,
         stream=True,
         temperature=0.3,
         max_tokens=1024

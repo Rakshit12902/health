@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { UploadArea } from "@/components/Upload/UploadArea"
 import { HealthTrends } from "@/components/Dashboard/HealthTrends"
 import dynamic from 'next/dynamic'
 
@@ -174,14 +173,6 @@ export default function DashboardPage() {
             <HealthTrends profileId={profile.id} />
           </div>
         )}
-
-        {/* Upload Area */}
-        <div className="mt-8">
-           <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-             <FileText size={24} className="text-[var(--color-accent-cyan)]" /> Analyze New Report
-           </h2>
-           <UploadArea />
-        </div>
 
         {/* Map Area */}
         <div className="mt-8 pb-10">
