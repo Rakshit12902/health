@@ -12,7 +12,7 @@
 
 **Understand Your Health. Instantly.**
 
-[🌐 Live Demo](https://curamind-frontend.onrender.com) · [🐛 Report Bug](#) · [✨ Request Feature](#)
+[🌐 Live Demo](https://curamind-mu.vercel.app/) · [🐛 Report Bug](#) · [✨ Request Feature](#)
 
 </div>
 
