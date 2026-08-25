@@ -1,5 +1,9 @@
 import os
+from dotenv import load_dotenv
 from groq import Groq
+
+# Load environment variables explicitly
+load_dotenv()
 
 # Initialize Groq client
 client = None
