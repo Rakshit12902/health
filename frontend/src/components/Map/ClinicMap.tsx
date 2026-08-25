@@ -52,7 +52,7 @@ export function ClinicMap() {
           );
           out 5;
         `;
-        const res = await fetch(`https://overpass-api.de/api/interpreter`, {
+        const res = await fetch(`/api/overpass`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
