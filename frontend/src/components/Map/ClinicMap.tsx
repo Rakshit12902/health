@@ -52,7 +52,8 @@ export function ClinicMap() {
           );
           out 5;
         `;
-        const res = await fetch(`https://overpass-api.de/api/interpreter`, {
+        // Using corsproxy.io to completely bypass browser CORS errors
+        const res = await fetch(`https://corsproxy.io/?https://overpass-api.de/api/interpreter`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
