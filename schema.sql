@@ -122,3 +122,39 @@ CREATE TABLE public.doctor_links (
 ALTER TABLE public.prescriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pill_reminders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.doctor_links ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================
+-- ADDED RLS POLICIES FOR ALL REMAINING TABLES
+-- ==========================================
+
+-- 1. Profiles Table Policies
+CREATE POLICY "Users can manage their own profiles" ON public.profiles FOR ALL USING (user_id = auth.uid());
+
+-- 2. Sessions Table Policies
+CREATE POLICY "Users can manage their own sessions" ON public.sessions FOR ALL USING (user_id = auth.uid());
+
+-- 3. Prescriptions Table Policies
+CREATE POLICY "Users can manage their own prescriptions" ON public.prescriptions FOR ALL USING (user_id = auth.uid());
+
+-- 4. Doctor Links Table Policies
+CREATE POLICY "Users can manage their own doctor links" ON public.doctor_links FOR ALL USING (user_id = auth.uid());
+
+-- 5. Documents Table Policies (Linked via Session)
+CREATE POLICY "Users can manage their own documents" ON public.documents FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.sessions WHERE sessions.id = documents.session_id AND sessions.user_id = auth.uid())
+);
+
+-- 6. Messages Table Policies (Linked via Session)
+CREATE POLICY "Users can manage their own messages" ON public.messages FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.sessions WHERE sessions.id = messages.session_id AND sessions.user_id = auth.uid())
+);
+
+-- 7. Metrics Table Policies (Linked via Profile)
+CREATE POLICY "Users can manage their own metrics" ON public.metrics FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = metrics.profile_id AND profiles.user_id = auth.uid())
+);
+
+-- 8. Pill Reminders Table Policies (Linked via Prescription)
+CREATE POLICY "Users can manage their own pill reminders" ON public.pill_reminders FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.prescriptions WHERE prescriptions.id = pill_reminders.prescription_id AND prescriptions.user_id = auth.uid())
+);
