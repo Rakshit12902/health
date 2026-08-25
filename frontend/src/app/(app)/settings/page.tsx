@@ -116,7 +116,7 @@ export default function SettingsPage() {
         setUserId(user.id)
         
         // Fetch profile
-        const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single()
+        const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle()
         if (data) {
           if (data.age) setAge(data.age.toString())
           if (data.gender) setGender(data.gender)

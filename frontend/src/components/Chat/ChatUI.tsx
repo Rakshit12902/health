@@ -22,19 +22,29 @@ export function ChatUI() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const ignoreNextAbortRef = useRef(false)
+  const isCreatingSessionRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (sessionId) {
-      fetchMessages(sessionId)
+      if (isCreatingSessionRef.current) {
+         isCreatingSessionRef.current = false
+      } else {
+         fetchMessages(sessionId)
+      }
     } else {
       setMessages([{ id: '1', role: 'ai', content: 'Hello! I am CuraMind. Upload your medical report or ask me a question.' }])
     }
     // Cleanup audio and fetch on unmount
     return () => {
       stopAudio()
-      if (abortControllerRef.current) abortControllerRef.current.abort()
+      if (ignoreNextAbortRef.current) {
+        ignoreNextAbortRef.current = false
+      } else if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
     }
   }, [sessionId])
 
@@ -327,6 +337,8 @@ export function ChatUI() {
            if (newSession && newSession.id) {
              activeSessionId = newSession.id;
              // Update URL silently
+             ignoreNextAbortRef.current = true;
+             isCreatingSessionRef.current = true;
              window.history.replaceState({}, '', `/chat?session=${activeSessionId}`);
            }
         }
