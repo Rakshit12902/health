@@ -385,6 +385,12 @@ export function ChatUI() {
                   msg.id === aiMsgId ? { ...msg, content: msg.content + data.token } : msg
                 ));
               }
+              if (data.error) {
+                setMessages(prev => prev.map(msg => 
+                  msg.id === aiMsgId ? { ...msg, content: "Error: " + data.error } : msg
+                ));
+                setIsGenerating(false);
+              }
               if (data.event === 'done') {
                 setIsGenerating(false);
               }
