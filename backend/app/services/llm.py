@@ -215,7 +215,7 @@ def generate_chat_stream(message: str, extracted_text: str = "", language: str =
     messages.append({"role": "user", "content": context_msg})
     
     stream = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-70b-versatile",
         messages=messages,
         stream=True,
         temperature=0.3,
@@ -250,7 +250,7 @@ def extract_metrics_from_report(extracted_text: str):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-70b-versatile",
             messages=[{"role": "system", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.1,
@@ -285,7 +285,7 @@ def extract_prescriptions_from_report(extracted_text: str):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-70b-versatile",
             messages=[{"role": "system", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.1,
