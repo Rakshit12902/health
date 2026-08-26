@@ -7,7 +7,7 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body,
     });
-    if (!res.ok) return NextResponse.json({ error: \Overpass API returned \\ }, { status: res.status });
+    if (!res.ok) return NextResponse.json({ error: 'Overpass API returned an error' }, { status: res.status });
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error: any) {
