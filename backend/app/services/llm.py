@@ -12,6 +12,9 @@ try:
 except Exception as e:
     print(f"Warning: Groq client could not be initialized. Please set GROQ_API_KEY environment variable. Error: {e}")
 
+DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+FALLBACK_MODELS = [DEFAULT_MODEL, "llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
+
 SYSTEM_PROMPT = """You are **CuraMind AI**, a professional, empathetic, and reliable AI healthcare assistant.
 
 ## Role
@@ -214,13 +217,29 @@ def generate_chat_stream(message: str, extracted_text: str = "", language: str =
     # Append the current message
     messages.append({"role": "user", "content": context_msg})
     
-    stream = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=messages,
-        stream=True,
-        temperature=0.3,
-        max_tokens=1024
-    )
+    stream = None
+    # Deduplicate fallback list preserving order
+    seen = set()
+    models_to_try = [m for m in FALLBACK_MODELS if not (m in seen or seen.add(m))]
+    
+    last_err = None
+    for model_name in models_to_try:
+        try:
+            stream = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                stream=True,
+                temperature=0.3,
+                max_tokens=1024
+            )
+            break
+        except Exception as err:
+            last_err = err
+            print(f"Model {model_name} failed: {err}. Trying fallback...")
+            continue
+
+    if not stream:
+        raise last_err or RuntimeError("All LLM models failed.")
     
     for chunk in stream:
         if chunk.choices[0].delta.content is not None:
@@ -250,7 +269,7 @@ def extract_metrics_from_report(extracted_text: str):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=DEFAULT_MODEL,
             messages=[{"role": "system", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.1,
@@ -285,7 +304,7 @@ def extract_prescriptions_from_report(extracted_text: str):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=DEFAULT_MODEL,
             messages=[{"role": "system", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.1,
