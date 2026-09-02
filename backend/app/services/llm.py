@@ -12,8 +12,15 @@ try:
 except Exception as e:
     print(f"Warning: Groq client could not be initialized. Please set GROQ_API_KEY environment variable. Error: {e}")
 
-DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
-FALLBACK_MODELS = [DEFAULT_MODEL, "llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
+DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+FALLBACK_MODELS = [
+    DEFAULT_MODEL,
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.6-27b",
+    "qwen/qwen3.8-27b",
+    "groq/compound"
+]
 
 SYSTEM_PROMPT = """You are **CuraMind AI**, a professional, empathetic, and reliable AI healthcare assistant.
 
