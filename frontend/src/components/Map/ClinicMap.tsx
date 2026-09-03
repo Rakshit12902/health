@@ -127,10 +127,16 @@ export function ClinicMap() {
       <div className="flex-1 glass-panel overflow-hidden h-[400px] lg:h-full relative rounded-2xl border border-[var(--color-accent-blue)]/30 z-0 shadow-lg">
         {location ? (
           <MapContainer center={[location.lat, location.lon]} zoom={13} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-            {/* Dark mode map tiles */}
+            {/* Dark mode map tiles (CSS Invert Trick on Free OSM) */}
+            <style>{`
+              .dark-map-tiles {
+                filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+              }
+            `}</style>
             <TileLayer
+              className="dark-map-tiles"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <RecenterMap lat={location.lat} lon={location.lon} />
             
