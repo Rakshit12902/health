@@ -47,17 +47,15 @@ export default function HowItWorksBottom() {
               <p className="text-[#64748B] text-xs leading-relaxed">Feel informed, confident and in control</p>
             </div>
           </div>
-        </div>
-
-        {/* Right Content - Visual Mockup */}
-        <div className="flex-1 w-full relative h-[400px] flex items-center justify-center pointer-events-none mt-10 lg:mt-0">
+        </div>        {/* Right Content - Visual Mockup */}
+        <div className="flex-1 w-full relative h-[460px] flex items-center justify-center pointer-events-none mt-10 lg:mt-0">
           
           {/* Decorative floating texts */}
-          <div className="absolute top-0 left-0 -rotate-[15deg] font-medium text-blue-300 text-xl tracking-tight z-0" style={{ fontFamily: "'Caveat', 'Comic Sans MS', cursive" }}>
+          <div className="absolute top-2 left-4 -rotate-[15deg] font-medium text-blue-300 text-lg tracking-tight z-0" style={{ fontFamily: "'Caveat', 'Comic Sans MS', cursive" }}>
             From Reports <br/>
             to Real Understanding
           </div>
-          <div className="absolute bottom-4 right-0 rotate-[10deg] font-medium text-blue-300 text-xl tracking-tight z-0 text-right" style={{ fontFamily: "'Caveat', 'Comic Sans MS', cursive" }}>
+          <div className="absolute bottom-2 right-4 rotate-[10deg] font-medium text-blue-300 text-lg tracking-tight z-0 text-right" style={{ fontFamily: "'Caveat', 'Comic Sans MS', cursive" }}>
             Same Reports <br/>
             Clearer Answers <br/>
             Healthier You
@@ -67,7 +65,7 @@ export default function HowItWorksBottom() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-200/50 rounded-full blur-3xl z-0"></div>
 
           {/* Left Slanted Card (Lab Report) */}
-          <div className="absolute left-[10%] top-[10%] w-[260px] h-[340px] bg-white border border-gray-100 rounded-2xl shadow-xl shadow-blue-900/5 -rotate-12 z-10 flex flex-col p-6 opacity-90">
+          <div className="absolute left-[8%] top-[15%] w-[250px] h-[320px] bg-white border border-gray-100 rounded-2xl shadow-xl shadow-blue-900/5 -rotate-12 z-10 flex flex-col p-6 opacity-95">
              <h4 className="font-bold text-[#0F172A] text-[15px] mb-6">Lab Report</h4>
              {/* Skeleton lines */}
              <div className="w-full h-2.5 bg-gray-100 rounded-full mb-3"></div>
@@ -80,7 +78,7 @@ export default function HowItWorksBottom() {
           </div>
 
           {/* Arrow */}
-          <div className="absolute top-1/2 left-[48%] -translate-y-1/2 -translate-x-1/2 z-20 text-blue-500">
+          <div className="absolute top-[48%] left-[48%] -translate-y-1/2 -translate-x-1/2 z-20 text-blue-500">
              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                <path d="M5 12h14"></path>
                <path d="m12 5 7 7-7 7"></path>
@@ -88,7 +86,7 @@ export default function HowItWorksBottom() {
           </div>
 
           {/* Right Slanted Card (AI Analysis) */}
-          <div className="absolute right-[5%] top-[25%] w-[320px] bg-white border border-blue-100 rounded-2xl shadow-2xl shadow-blue-900/10 rotate-6 z-30 flex flex-col p-5">
+          <div className="absolute right-[5%] top-[20%] w-[320px] bg-white border border-blue-100 rounded-2xl shadow-2xl shadow-blue-900/10 rotate-6 z-30 flex flex-col p-5">
              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
