@@ -52,9 +52,11 @@ export async function updateSession(request: NextRequest) {
       !request.nextUrl.pathname.startsWith('/login') &&
       !request.nextUrl.pathname.startsWith('/signup') &&
       !request.nextUrl.pathname.startsWith('/shared') &&
+      !request.nextUrl.pathname.startsWith('/features') &&
+      !request.nextUrl.pathname.startsWith('/how-it-works') &&
       request.nextUrl.pathname !== '/'
     ) {
-      // no user, potentially respond by redirecting the user to the login page
+      // no user, potentially respond by redirecting the user to the home/login page
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)

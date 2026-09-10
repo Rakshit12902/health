@@ -5,6 +5,9 @@ import ProblemSolution from '@/components/Landing/ProblemSolution';
 import FeaturesHero from '@/components/Features/FeaturesHero';
 import FeaturesBentoGrid from '@/components/Features/FeaturesBentoGrid';
 import FeaturesCTA from '@/components/Features/FeaturesCTA';
+import HowItWorksHero from '@/components/HowItWorks/HowItWorksHero';
+import HowItWorksSteps from '@/components/HowItWorks/HowItWorksSteps';
+import HowItWorksBottom from '@/components/HowItWorks/HowItWorksBottom';
 
 export default function LandingPage() {
   return (
@@ -18,6 +21,13 @@ export default function LandingPage() {
         <FeaturesHero />
         <FeaturesBentoGrid />
         <FeaturesCTA />
+      </div>
+
+      {/* How It Works Section - Visible on scroll */}
+      <div id="how-it-works" className="mt-20">
+        <HowItWorksHero />
+        <HowItWorksSteps />
+        <HowItWorksBottom />
       </div>
     </div>
   );

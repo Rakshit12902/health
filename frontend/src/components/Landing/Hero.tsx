@@ -73,14 +73,15 @@ export default function Hero() {
 
       {/* Right Column - Graphics */}
       <div className="flex-1 relative w-full h-[600px] hidden lg:block">
-        {/* Placeholder for the complex laptop/phone graphic.
-            The user can swap this out with the exported transparent PNG from their designer. */}
-        <div className="absolute inset-0 flex items-center justify-center">
-            {/* If the graphic is provided as an image: */}
-            <div className="w-full h-full bg-slate-200/30 rounded-3xl border border-white/50 backdrop-blur-sm flex flex-col items-center justify-center text-slate-400 border-dashed relative overflow-hidden">
-                <span className="text-sm font-medium z-10">[Hero Graphic Placeholder]</span>
-                <span className="text-xs z-10">Replace with your laptop/phone image</span>
-            </div>
+        <div className="absolute inset-0 w-full h-full pt-8">
+          <Image 
+            src="/landingdashboard.png" 
+            alt="CuraMind AI Healthcare Dashboard and Chat Interface" 
+            fill 
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-contain scale-110 lg:translate-x-12" 
+            priority
+          />
         </div>
       </div>
     </div>

@@ -17,11 +17,14 @@ export default function Navbar({ activeTab = 'home' }: { activeTab?: 'home' | 'f
           Home
           {activeTab === 'home' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
         </Link>
-        <Link href="/features" className={`relative transition-colors ${activeTab === 'features' ? 'text-[#0F172A]' : 'hover:text-[#0F172A]'}`}>
+        <a href="/features" className={`relative transition-colors ${activeTab === 'features' ? 'text-[#0F172A]' : 'hover:text-[#0F172A]'}`}>
           Features
           {activeTab === 'features' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
-        </Link>
-        <Link href="#how-it-works" className="hover:text-[#0F172A] transition-colors">How It Works</Link>
+        </a>
+        <a href="/how-it-works" className={`relative transition-colors ${activeTab === 'how-it-works' ? 'text-[#0F172A]' : 'hover:text-[#0F172A]'}`}>
+          How It Works
+          {activeTab === 'how-it-works' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
+        </a>
         <Link href="#pricing" className="hover:text-[#0F172A] transition-colors">Pricing</Link>
         <Link href="#about" className="hover:text-[#0F172A] transition-colors">About</Link>
       </div>
