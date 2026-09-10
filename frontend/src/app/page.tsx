@@ -12,6 +12,12 @@ import PricingHero from '@/components/Pricing/PricingHero';
 import PricingCards from '@/components/Pricing/PricingCards';
 import PricingFeatures from '@/components/Pricing/PricingFeatures';
 import PricingCTA from '@/components/Pricing/PricingCTA';
+import AboutHero from '@/components/About/AboutHero';
+import AboutPurpose from '@/components/About/AboutPurpose';
+import AboutJourney from '@/components/About/AboutJourney';
+import AboutWhy from '@/components/About/AboutWhy';
+import AboutTeam from '@/components/About/AboutTeam';
+import AboutCTA from '@/components/About/AboutCTA';
 
 export default function LandingPage() {
   return (
@@ -40,6 +46,16 @@ export default function LandingPage() {
         <PricingCards />
         <PricingFeatures />
         <PricingCTA />
+      </div>
+
+      {/* About Section - Visible on scroll */}
+      <div id="about" className="mt-20">
+        <AboutHero />
+        <AboutPurpose />
+        <AboutJourney />
+        <AboutWhy />
+        <AboutTeam />
+        <AboutCTA />
       </div>
     </div>
   );

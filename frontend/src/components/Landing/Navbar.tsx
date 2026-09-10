@@ -29,7 +29,10 @@ export default function Navbar({ activeTab = 'home' }: { activeTab?: 'home' | 'f
           Pricing
           {activeTab === 'pricing' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
         </a>
-        <Link href="#about" className="hover:text-[#0F172A] transition-colors">About</Link>
+        <a href="/about" className={`relative transition-colors ${activeTab === 'about' ? 'text-[#0F172A]' : 'hover:text-[#0F172A]'}`}>
+          About
+          {activeTab === 'about' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
+        </a>
       </div>
 
       {/* CTA Buttons */}
