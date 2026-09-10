@@ -8,6 +8,10 @@ import FeaturesCTA from '@/components/Features/FeaturesCTA';
 import HowItWorksHero from '@/components/HowItWorks/HowItWorksHero';
 import HowItWorksSteps from '@/components/HowItWorks/HowItWorksSteps';
 import HowItWorksBottom from '@/components/HowItWorks/HowItWorksBottom';
+import PricingHero from '@/components/Pricing/PricingHero';
+import PricingCards from '@/components/Pricing/PricingCards';
+import PricingFeatures from '@/components/Pricing/PricingFeatures';
+import PricingCTA from '@/components/Pricing/PricingCTA';
 
 export default function LandingPage() {
   return (
@@ -28,6 +32,14 @@ export default function LandingPage() {
         <HowItWorksHero />
         <HowItWorksSteps />
         <HowItWorksBottom />
+      </div>
+
+      {/* Pricing Section - Visible on scroll */}
+      <div id="pricing" className="mt-20">
+        <PricingHero />
+        <PricingCards />
+        <PricingFeatures />
+        <PricingCTA />
       </div>
     </div>
   );

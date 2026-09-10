@@ -54,6 +54,7 @@ export async function updateSession(request: NextRequest) {
       !request.nextUrl.pathname.startsWith('/shared') &&
       !request.nextUrl.pathname.startsWith('/features') &&
       !request.nextUrl.pathname.startsWith('/how-it-works') &&
+      !request.nextUrl.pathname.startsWith('/pricing') &&
       request.nextUrl.pathname !== '/'
     ) {
       // no user, potentially respond by redirecting the user to the home/login page

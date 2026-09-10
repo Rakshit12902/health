@@ -13,10 +13,10 @@ export default function Navbar({ activeTab = 'home' }: { activeTab?: 'home' | 'f
 
       {/* Center Links - Hidden on mobile */}
       <div className="hidden md:flex items-center gap-8 font-medium text-sm text-[#475569]">
-        <Link href="/" className={`relative transition-colors ${activeTab === 'home' ? 'text-[#0F172A]' : 'hover:text-[#0F172A]'}`}>
+        <a href="/" className={`relative transition-colors ${activeTab === 'home' ? 'text-[#0F172A]' : 'hover:text-[#0F172A]'}`}>
           Home
           {activeTab === 'home' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
-        </Link>
+        </a>
         <a href="/features" className={`relative transition-colors ${activeTab === 'features' ? 'text-[#0F172A]' : 'hover:text-[#0F172A]'}`}>
           Features
           {activeTab === 'features' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
@@ -25,7 +25,10 @@ export default function Navbar({ activeTab = 'home' }: { activeTab?: 'home' | 'f
           How It Works
           {activeTab === 'how-it-works' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
         </a>
-        <Link href="#pricing" className="hover:text-[#0F172A] transition-colors">Pricing</Link>
+        <a href="/pricing" className={`relative transition-colors ${activeTab === 'pricing' ? 'text-[#0F172A]' : 'hover:text-[#0F172A]'}`}>
+          Pricing
+          {activeTab === 'pricing' && <span className="absolute -bottom-2 left-0 right-0 h-0.5 bg-[#3B82F6] rounded-full"></span>}
+        </a>
         <Link href="#about" className="hover:text-[#0F172A] transition-colors">About</Link>
       </div>
 
