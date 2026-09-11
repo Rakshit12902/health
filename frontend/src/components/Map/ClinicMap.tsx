@@ -44,7 +44,7 @@ export function ClinicMap() {
       setLoading(true)
       try {
         const query = `
-          [out:json];
+          [out:json][timeout:10];
           (
             node["amenity"="clinic"](around:5000, ${lat}, ${lon});
             node["amenity"="hospital"](around:5000, ${lat}, ${lon});
