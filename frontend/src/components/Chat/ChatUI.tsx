@@ -182,23 +182,53 @@ export function ChatUI() {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    // If no session, create one first or alert user
-    if (!sessionId) {
-      alert("Please start a 'New Chat' first before uploading documents here.")
-      return
-    }
-
     setIsUploading(true)
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    
-    let uploadedDocIds: string[] = [];
-    
+    let activeSessionId = sessionId;
+
     try {
+      // Auto-create session if not present yet
+      if (!activeSessionId) {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (user) {
+          const docTitle = files[0]?.name ? `Report: ${files[0].name.substring(0, 25)}` : "Medical Report";
+          const createRes = await fetch(`${baseUrl}/api/chat/sessions?user_id=${user.id}&title=${encodeURIComponent(docTitle)}`, {
+            method: 'POST'
+          });
+          const newSession = await createRes.json();
+          if (newSession && newSession.id) {
+            activeSessionId = newSession.id;
+            ignoreNextAbortRef.current = true;
+            isCreatingSessionRef.current = true;
+            window.history.replaceState({}, '', `/chat?session=${activeSessionId}`);
+          }
+        }
+      }
+
+      if (!activeSessionId) {
+        alert("Please log in or start a chat first before uploading documents.");
+        setIsUploading(false);
+        return;
+      }
+
+      // Display upload message in chat
+      const fileNames = Array.from(files).map(f => f.name).join(', ');
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: `📎 Uploaded document(s): ${fileNames}`
+      }]);
+
+      let uploadedDocIds: string[] = [];
+
       // Upload all files concurrently
       const uploadPromises = Array.from(files).map(async (file) => {
         const formData = new FormData()
         formData.append('file', file)
-        formData.append('session_id', sessionId)
+        formData.append('session_id', activeSessionId!)
         
         const response = await fetch(`${baseUrl}/api/documents/upload`, {
           method: 'POST',
@@ -218,7 +248,7 @@ export function ChatUI() {
       
       // Poll for status of all docs
       if (uploadedDocIds.length > 0) {
-        pollMultipleDocumentsStatus(uploadedDocIds, sessionId);
+        pollMultipleDocumentsStatus(uploadedDocIds, activeSessionId);
       } else {
         setIsUploading(false);
       }
