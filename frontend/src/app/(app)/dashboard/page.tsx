@@ -1,11 +1,12 @@
 'use client'
 
+import { fetchWithAuth } from '@/lib/api';
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { HealthTrends } from "@/components/Dashboard/HealthTrends"
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Activity, User as UserIcon, Droplets, Calendar, Share2, Copy, Check, X, ArrowRight, HeartPulse, Sparkles } from "lucide-react"
+import { Activity, User as UserIcon, Droplets, Calendar, Share2, Copy, Check, X, ArrowRight, HeartPulse, Sparkles, Bell, Trash2 } from "lucide-react"
 
 const ClinicMap = dynamic(() => import('@/components/Map/ClinicMap').then(mod => mod.ClinicMap), {
   ssr: false,
@@ -23,6 +24,50 @@ export default function DashboardPage() {
   const [shareLink, setShareLink] = useState('')
   const [copied, setCopied] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
+  
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [notifications, setNotifications] = useState<any[]>([])
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const res = await fetchWithAuth(`${baseUrl}/api/notifications/in-app`);
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data);
+        }
+      } catch (e) {
+        console.error("Error loading notifications:", e);
+      }
+    }
+    loadNotifications();
+  }, [])
+
+  const handleDeleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      const res = await fetchWithAuth(`${baseUrl}/api/notifications/in-app/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setNotifications(notifications.filter(n => n.id !== id));
+      }
+    } catch(e) {}
+  }
+  
+  const handleMarkAllRead = async () => {
+    try {
+      const res = await fetchWithAuth(`${baseUrl}/api/notifications/in-app/mark-all-read`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        setNotifications(notifications.map(n => ({...n, read: true})));
+      }
+    } catch(e) {}
+  }
+
+  const unreadCount = notifications.filter(n => !n.read).length
   
   const handleShare = async () => {
       setIsSharing(true)
@@ -53,7 +98,7 @@ export default function DashboardPage() {
           // Fetch prescriptions and metrics snapshot if available
           let prescData = []
           try {
-            const pRes = await fetch(`${baseUrl}/api/chat/prescriptions?user_id=${user.id}`)
+            const pRes = await fetchWithAuth(`${baseUrl}/api/chat/prescriptions?user_id=${user.id}`)
             if (pRes.ok) {
               const pData = await pRes.json()
               if (pData.data) prescData = pData.data
@@ -76,7 +121,7 @@ export default function DashboardPage() {
 
           // 1. Send to backend with snapshot so link is immediately viewable
           try {
-            const res = await fetch(`${baseUrl}/api/chat/doctor-links`, {
+            const res = await fetchWithAuth(`${baseUrl}/api/chat/doctor-links`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -154,28 +199,32 @@ export default function DashboardPage() {
         } catch {}
 
         try {
-          // 1. Fetch directly from Supabase (authenticated user session satisfies RLS)
-          const { data: profData } = await supabase
+          // 1. Fetch directly from Supabase
+          const { data: profData, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('user_id', user.id)
             .maybeSingle()
 
-          if (profData) {
+          if (profData && !error) {
             setProfile((prev: any) => ({ ...prev, ...profData }))
           } else {
-            // Fallback to backend API
+            throw new Error("No data or error from supabase")
+          }
+        } catch (e) {
+          // Fallback to backend API
+          try {
             const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-            const res = await fetch(`${baseUrl}/api/chat/profile?user_id=${user.id}`);
+            const res = await fetchWithAuth(`${baseUrl}/api/chat/profile?user_id=${user.id}`);
             if (res.ok) {
               const result = await res.json();
               if (result.data) {
                 setProfile((prev: any) => ({ ...prev, ...result.data }));
               }
             }
+          } catch(apiErr) {
+            console.error("Failed to load profile from backend", apiErr);
           }
-        } catch (e) {
-          console.error("Failed to load profile", e);
         }
       }
       setLoading(false)
@@ -215,8 +264,69 @@ export default function DashboardPage() {
                 </>
               )}
             </button>
-            <div className="p-2.5 rounded-full bg-sky-50 text-[#0284C7] border border-sky-100">
-              <HeartPulse size={20} />
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2.5 rounded-full bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-[#0F172A] border border-slate-200 transition-colors cursor-pointer"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-pulse border border-white"></span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h3 className="font-bold text-[#0F172A] text-sm">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={handleMarkAllRead}
+                        className="text-[11px] font-semibold text-[#0284C7] hover:underline cursor-pointer"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      notifications.map(notification => (
+                        <div 
+                          key={notification.id} 
+                          className={`group p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3 relative ${!notification.read ? 'bg-sky-50/30' : ''}`}
+                          onClick={async () => {
+                            if (!notification.read) {
+                              setNotifications(notifications.map(n => n.id === notification.id ? { ...n, read: true } : n));
+                              try {
+                                await fetchWithAuth(`${baseUrl}/api/notifications/in-app/${notification.id}/read`, { method: 'PATCH' });
+                              } catch(e) {}
+                            }
+                          }}
+                        >
+                          <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!notification.read ? 'bg-[#0284C7]' : 'bg-transparent'}`}></div>
+                          <div className="flex-1 pr-6">
+                            <p className={`text-sm ${!notification.read ? 'font-bold text-[#0F172A]' : 'font-medium text-slate-600'}`}>
+                              {notification.title}
+                            </p>
+                            <p className="text-[11px] text-slate-400 mt-1">{notification.time || (notification.created_at ? new Date(notification.created_at).toLocaleString() : 'Just now')}</p>
+                          </div>
+                          <button
+                            onClick={(e) => handleDeleteNotification(e, notification.id)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg"
+                            title="Delete Notification"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-6 text-center text-slate-500 text-sm">
+                        No new notifications
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

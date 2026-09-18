@@ -1,5 +1,6 @@
 'use client'
 
+import { fetchWithAuth } from '@/lib/api';
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -64,25 +65,11 @@ export function Sidebar() {
     fetchUser()
   }, [])
 
-  useEffect(() => {
-    if (userId) {
-      fetchSessions()
-    }
-
-    const handleSessionCreated = () => {
-      if (userId) {
-        fetchSessions()
-      }
-    }
-    window.addEventListener('session-created', handleSessionCreated)
-    return () => window.removeEventListener('session-created', handleSessionCreated)
-  }, [userId, currentSessionId])
-
-  const fetchSessions = async () => {
+  async function fetchSessions() {
     setLoadingHistory(true)
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${baseUrl}/api/chat/sessions?user_id=${userId}`)
+      const res = await fetchWithAuth(`${baseUrl}/api/chat/sessions?user_id=${userId}`)
       if (res.ok) {
         const data = await res.json().catch(() => null)
         if (Array.isArray(data)) {
@@ -97,11 +84,23 @@ export function Sidebar() {
     setLoadingHistory(false)
   }
 
+  useEffect(() => {
+    if (userId) {
+      fetchSessions()
+    }
+
+    const handleSessionCreated = () => {
+      fetchSessions()
+    }
+    window.addEventListener('session-created', handleSessionCreated)
+    return () => window.removeEventListener('session-created', handleSessionCreated)
+  }, [userId, currentSessionId])
+
   const handleDeleteSession = async (sessionId: string) => {
     if (!confirm('Are you sure you want to delete this chat?')) return;
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${baseUrl}/api/chat/sessions/${sessionId}`, {
+      const res = await fetchWithAuth(`${baseUrl}/api/chat/sessions/${sessionId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -508,7 +507,12 @@ export function Sidebar() {
                   return (
                     <div
                       key={session.id}
-                      className={`group p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                      onClick={() => {
+                        setShowAllHistoryModal(false);
+                        handleNavClick();
+                        router.push(`/chat?session=${session.id}`);
+                      }}
+                      className={`group p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
                         isCurrent
                           ? 'bg-[#E0F2FE]/60 border-blue-200 shadow-xs'
                           : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/70'
@@ -541,7 +545,8 @@ export function Sidebar() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         <Link
                           href={`/chat?session=${session.id}`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setShowAllHistoryModal(false);
                             handleNavClick();
                           }}
@@ -555,7 +560,10 @@ export function Sidebar() {
                           <ArrowRight size={12} />
                         </Link>
                         <button
-                          onClick={() => handleDeleteSession(session.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSession(session.id);
+                          }}
                           className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
                           title="Delete Chat"
                         >

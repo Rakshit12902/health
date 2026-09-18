@@ -14,9 +14,13 @@ import {
   Trash2, 
   PlusCircle, 
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Share2,
+  Copy,
+  Check
 } from 'lucide-react'
 import Link from 'next/link'
+import { fetchWithAuth } from '@/lib/api';
 
 interface PrescriptionItem {
   id: string
@@ -61,6 +65,100 @@ export default function PrescriptionsPage() {
   const [newDuration, setNewDuration] = useState('')
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  
+  const [shareLink, setShareLink] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+
+  const handleShare = async () => {
+    setIsSharing(true)
+    const supabase = createClient()
+    const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+    const user = data?.user
+    if (!user) {
+        setIsSharing(false)
+        return
+    }
+    
+    try {
+        const token = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : (Math.random().toString(36).substring(2) + Date.now().toString(36))
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        try {
+          await supabase.from('users').upsert({
+            id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || 'User'
+          }, { onConflict: 'id' })
+        } catch (ue) {
+          console.warn("User upsert notice:", ue)
+        }
+
+        // Try getting profile
+        let profile = null;
+        try {
+          const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle()
+          profile = prof;
+        } catch {}
+
+        try {
+          const res = await fetchWithAuth(`${baseUrl}/api/chat/doctor-links`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+              },
+              body: JSON.stringify({ 
+                user_id: user.id, 
+                expires_in_days: 7,
+                token: token,
+                profile: profile,
+                metrics: [],
+                prescriptions: prescriptions
+              })
+          })
+          if (res.ok) {
+              const data = await res.json()
+              if (data.token) {
+                  const url = `${window.location.origin}/shared/${data.token}`
+                  setShareLink(url)
+                  setCopied(false)
+                  setIsSharing(false)
+                  return
+              }
+          }
+        } catch (apiErr) {
+          console.warn("Backend doctor-links notice:", apiErr)
+        }
+
+        // Fallback Supabase
+        try {
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          await supabase.from('doctor_links').insert({
+              user_id: user.id,
+              secure_token: token,
+              expires_at: expiresAt
+          })
+        } catch (dbErr) {
+          console.warn("Direct doctor_links write notice:", dbErr)
+        }
+
+        const url = `${window.location.origin}/shared/${token}`
+        setShareLink(url)
+        setCopied(false)
+    } catch (e) {
+        console.error("Error generating share link:", e)
+    } finally {
+        setIsSharing(false)
+    }
+  }
+
+  const copyToClipboard = () => {
+    if (!shareLink) return
+    navigator.clipboard.writeText(shareLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   useEffect(() => {
     async function initUser() {
@@ -79,7 +177,7 @@ export default function PrescriptionsPage() {
 
     // 1. Fetch from backend API
     try {
-      const res = await fetch(`${baseUrl}/api/chat/prescriptions?user_id=${uid}`)
+      const res = await fetchWithAuth(`${baseUrl}/api/chat/prescriptions?user_id=${uid}`)
       if (res.ok) {
         const data = await res.json()
         if (Array.isArray(data)) {
@@ -119,7 +217,7 @@ export default function PrescriptionsPage() {
     // 3. Fetch reminders from backend API
     const remMap = new Map<string, ReminderItem>()
     try {
-      const res = await fetch(`${baseUrl}/api/chat/pill-reminders?user_id=${uid}`)
+      const res = await fetchWithAuth(`${baseUrl}/api/chat/pill-reminders?user_id=${uid}`)
       if (res.ok) {
         const data = await res.json()
         if (Array.isArray(data)) {
@@ -160,7 +258,7 @@ export default function PrescriptionsPage() {
     if (!selectedMed) return
     setIsSaving(true)
     try {
-      const res = await fetch(`${baseUrl}/api/chat/pill-reminders`, {
+      const res = await fetchWithAuth(`${baseUrl}/api/chat/pill-reminders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -199,7 +297,7 @@ export default function PrescriptionsPage() {
     setReminders(prev => prev.map(r => r.id === id ? { ...r, taken_status: newStatus } : r))
 
     try {
-      await fetch(`${baseUrl}/api/chat/pill-reminders/${id}`, {
+      await fetchWithAuth(`${baseUrl}/api/chat/pill-reminders/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taken_status: newStatus })
@@ -219,7 +317,7 @@ export default function PrescriptionsPage() {
     setReminders(prev => prev.filter(r => r.prescription_id !== prescriptionId))
 
     try {
-      await fetch(`${baseUrl}/api/chat/prescriptions/${prescriptionId}`, {
+      await fetchWithAuth(`${baseUrl}/api/chat/prescriptions/${prescriptionId}`, {
         method: 'DELETE'
       })
     } catch (e) {
@@ -247,7 +345,7 @@ export default function PrescriptionsPage() {
     }
 
     try {
-      const res = await fetch(`${baseUrl}/api/chat/prescriptions`, {
+      const res = await fetchWithAuth(`${baseUrl}/api/chat/prescriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(medPayload)
@@ -286,7 +384,25 @@ export default function PrescriptionsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <button 
+            onClick={handleShare} 
+            disabled={isSharing}
+            className="flex items-center gap-2 bg-sky-50 hover:bg-sky-100 text-[#0284C7] px-3.5 py-2 rounded-xl transition-all font-semibold text-xs border border-sky-100 shadow-sm cursor-pointer disabled:opacity-60"
+          >
+            {isSharing ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-[#0284C7] border-t-transparent rounded-full animate-spin"></div>
+                <span>Generating...</span>
+              </>
+            ) : (
+              <>
+                <Share2 size={14} />
+                <span>Share with Doctor</span>
+              </>
+            )}
+          </button>
+
           <Link
             href="/chat"
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
@@ -304,6 +420,43 @@ export default function PrescriptionsPage() {
           </button>
         </div>
       </header>
+
+      {/* Share Link Modal */}
+      {shareLink && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white w-full max-w-lg rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                      <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
+                          <Share2 className="text-[#0284C7]" size={20} /> 
+                          Doctor Sharing Link
+                      </h2>
+                      <button onClick={() => setShareLink('')} className="text-slate-400 hover:text-[#0F172A] transition-colors cursor-pointer">
+                          <X size={20} />
+                      </button>
+                  </div>
+                  <div className="p-6">
+                      <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                          Share this secure, read-only link with your doctor. It grants access to your prescriptions, and automatically expires in 7 days.
+                      </p>
+                      
+                      <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-2xl">
+                          <input 
+                              type="text" 
+                              readOnly 
+                              value={shareLink}
+                              className="bg-transparent border-none outline-none text-[#0F172A] w-full px-3 text-xs font-mono"
+                          />
+                          <button 
+                              onClick={copyToClipboard}
+                              className={`py-2 px-4 rounded-xl transition-all font-semibold text-xs flex items-center gap-1.5 cursor-pointer ${copied ? 'bg-emerald-600 text-white' : 'bg-[#0284C7] text-white hover:bg-[#0369A1]'}`}
+                          >
+                              {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
       
       {/* Reminders Section */}
       {reminders.length > 0 && (

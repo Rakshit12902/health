@@ -11,7 +11,7 @@ export default function TopProgressBar() {
 
   useEffect(() => {
     // When route changes, quickly finish and fade out
-    setProgress(100);
+    setTimeout(() => setProgress(100), 0);
     const timer = setTimeout(() => {
       setIsVisible(false);
       setProgress(0);

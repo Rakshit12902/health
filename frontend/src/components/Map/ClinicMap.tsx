@@ -15,6 +15,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import { fetchWithAuth } from '@/lib/api';
 
 // Fix Leaflet marker icons in Next.js
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -26,6 +27,15 @@ L.Icon.Default.mergeOptions({
 
 const clinicIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const userLocationIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -61,7 +71,7 @@ export function ClinicMap() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/chat/clinics?lat=${lat}&lon=${lon}`);
+      const res = await fetchWithAuth(`/api/chat/clinics?lat=${lat}&lon=${lon}`);
       if (res.ok) {
         const data = await res.json();
         if (activeRef.current && data.clinics && data.clinics.length > 0) {
@@ -268,7 +278,7 @@ export function ClinicMap() {
               <RecenterMap lat={location.lat} lon={location.lon} />
               
               {/* User Real GPS Marker */}
-              <Marker position={[location.lat, location.lon]}>
+              <Marker position={[location.lat, location.lon]} icon={userLocationIcon}>
                 <Popup>
                   <div className="text-[#0F172A] font-semibold text-xs p-1">
                     Your Real GPS Position {cityName ? `(${cityName})` : ''}

@@ -142,14 +142,8 @@ if cors_origins_env:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://curamind-mu.vercel.app",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ] + [o.strip() for o in cors_origins_env.split(",") if o.strip()],
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app",
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

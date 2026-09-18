@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Pill, User as UserIcon, Droplets, Calendar, Lock, TrendingUp, HeartPulse } from 'lucide-react'
+import { fetchWithAuth } from '@/lib/api';
 
 export default function SharedPortalPage() {
     const params = useParams()
@@ -21,7 +22,7 @@ export default function SharedPortalPage() {
         async function loadSharedData() {
             try {
                 const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-                const res = await fetch(`${baseUrl}/api/chat/doctor-links/${token}`);
+                const res = await fetchWithAuth(`${baseUrl}/api/chat/doctor-links/${token}`);
                 if (!res.ok) {
                     throw new Error("Invalid or expired link.")
                 }

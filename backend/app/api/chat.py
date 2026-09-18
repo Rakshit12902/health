@@ -25,6 +25,7 @@ SESSIONS_STORE_FILE = BACKEND_DIR / "curamind_sessions.json"
 MESSAGES_STORE_FILE = BACKEND_DIR / "curamind_messages.json"
 DOCTOR_LINKS_FILE = BACKEND_DIR / "curamind_doctor_links.json"
 DOCUMENTS_STORE_FILE = BACKEND_DIR / "curamind_documents.json"
+PROFILES_STORE_FILE = BACKEND_DIR / "curamind_profiles.json"
 
 def _load_json_file(filepath):
     if os.path.exists(filepath):
@@ -42,8 +43,34 @@ def _save_json_file(filepath, data):
     except Exception as e:
         logger.error(f"Error saving {filepath}: {e}")
 
+def _verify_user(request: Request, expected_user_id: str):
+    if expected_user_id in ['default-user', 'guest', '']:
+        return True
+    
+    token = None
+    if request:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    supabase = get_supabase()
+    try:
+        user_res = supabase.auth.get_user(token)
+        if not user_res or not user_res.user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        if user_res.user.id != expected_user_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
 @router.get("/sessions")
 def get_user_sessions(user_id: str, request: Request = None):
+    _verify_user(request, user_id)
     all_local = _load_json_file(SESSIONS_STORE_FILE)
     sessions_map = {}
     
@@ -73,6 +100,7 @@ def get_user_sessions(user_id: str, request: Request = None):
 
 @router.post("/sessions")
 def create_session(user_id: str, title: str = "New Chat", request: Request = None):
+    _verify_user(request, user_id)
     new_id = str(uuid.uuid4())
     now_iso = datetime.utcnow().isoformat() + "Z"
     session_obj = {
@@ -157,6 +185,13 @@ class ProfileUpdateRequest(BaseModel):
 
 @router.get("/profile")
 def get_profile(user_id: str, request: Request = None):
+    _verify_user(request, user_id)
+    # Try getting from local JSON first
+    local_profiles = _load_json_file(PROFILES_STORE_FILE)
+    if user_id in local_profiles:
+        return {"status": "ok", "data": local_profiles[user_id]}
+
+    # Fallback to Supabase
     token = None
     if request:
         auth_header = request.headers.get("Authorization")
@@ -167,6 +202,11 @@ def get_profile(user_id: str, request: Request = None):
         prof_resp = supabase.table("profiles").select("*").eq("user_id", user_id).execute()
         if not prof_resp.data:
             return {"status": "ok", "data": None}
+            
+        # Cache to local JSON
+        local_profiles[user_id] = prof_resp.data[0]
+        _save_json_file(PROFILES_STORE_FILE, local_profiles)
+        
         return {"status": "ok", "data": prof_resp.data[0]}
     except Exception as e:
         print(f"Profile get error in backend: {e}")
@@ -174,13 +214,7 @@ def get_profile(user_id: str, request: Request = None):
 
 @router.post("/profile")
 def update_profile(req: ProfileUpdateRequest, request: Request = None):
-    token = None
-    if request:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-    supabase = get_supabase(token=token)
-    
+    _verify_user(request, req.user_id)
     updates = {}
     if req.age is not None:
         updates["age"] = req.age
@@ -192,14 +226,30 @@ def update_profile(req: ProfileUpdateRequest, request: Request = None):
     if not updates:
         return {"status": "ok"}
         
+    updates["user_id"] = req.user_id
+    
+    # Always save to local JSON first
+    local_profiles = _load_json_file(PROFILES_STORE_FILE)
+    if req.user_id not in local_profiles:
+        local_profiles[req.user_id] = {"user_id": req.user_id, "name": "Primary Profile"}
+    local_profiles[req.user_id].update(updates)
+    _save_json_file(PROFILES_STORE_FILE, local_profiles)
+
+    # Sync to Supabase
+    token = None
+    if request:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    supabase = get_supabase(token=token)
+        
     try:
         prof_resp = supabase.table("profiles").select("id").eq("user_id", req.user_id).execute()
-        
         if prof_resp.data:
             res = supabase.table("profiles").update(updates).eq("user_id", req.user_id).execute()
         else:
-            updates["user_id"] = req.user_id
-            updates["name"] = "Primary Profile"
+            if "name" not in updates:
+                updates["name"] = "Primary Profile"
             res = supabase.table("profiles").insert([updates]).execute()
             
         return {"status": "ok", "data": res.data}
@@ -743,12 +793,14 @@ class PrescriptionCreate(BaseModel):
     instructions: Optional[str] = ""
 
 @router.get("/prescriptions")
-def get_user_prescriptions(user_id: str):
+def get_user_prescriptions(user_id: str, request: Request = None):
+    _verify_user(request, user_id)
     from app.services.prescriptions import get_prescriptions_for_user
     return get_prescriptions_for_user(user_id)
 
 @router.post("/prescriptions")
-def add_user_prescription(req: PrescriptionCreate):
+def add_user_prescription(req: PrescriptionCreate, request: Request = None):
+    _verify_user(request, req.user_id)
     from app.services.prescriptions import save_prescriptions_for_user
     res = save_prescriptions_for_user(
         prescriptions_list=[req.dict()],
@@ -771,12 +823,14 @@ class ReminderUpdate(BaseModel):
     taken_status: bool
 
 @router.get("/pill-reminders")
-def get_user_pill_reminders(user_id: str):
+def get_user_pill_reminders(user_id: str, request: Request = None):
+    _verify_user(request, user_id)
     from app.services.prescriptions import get_reminders_for_user
     return get_reminders_for_user(user_id)
 
 @router.post("/pill-reminders")
-def add_user_pill_reminder(req: ReminderCreate):
+def add_user_pill_reminder(req: ReminderCreate, request: Request = None):
+    _verify_user(request, req.user_id)
     from app.services.prescriptions import create_reminder
     return create_reminder(req.user_id, req.prescription_id, req.time_of_day)
 

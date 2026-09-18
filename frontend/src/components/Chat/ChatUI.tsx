@@ -14,7 +14,6 @@ import {
   FileText, 
   Volume2, 
   VolumeX,
-  Share2,
   AudioLines,
   MessageSquare,
   Bot,
@@ -37,6 +36,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { fetchWithAuth } from '@/lib/api';
 
 interface MessageItem {
   id: string
@@ -75,10 +75,7 @@ export function ChatUI() {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({})
 
-  // Share with Doctor state
-  const [isSharing, setIsSharing] = useState(false)
-  const [shareLink, setShareLink] = useState('')
-  const [shareCopied, setShareCopied] = useState(false)
+
 
   const starterPrompts = [
     {
@@ -198,7 +195,7 @@ export function ChatUI() {
     setLoadingHistory(true)
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${baseUrl}/api/chat/sessions/${sid}/messages`)
+      const res = await fetchWithAuth(`${baseUrl}/api/chat/sessions/${sid}/messages`)
       if (res.ok) {
         const data = await res.json().catch(() => null)
         if (Array.isArray(data) && data.length > 0) {
@@ -317,7 +314,7 @@ export function ChatUI() {
 
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${baseUrl}/api/voice/transcribe`, {
+      const res = await fetchWithAuth(`${baseUrl}/api/voice/transcribe`, {
         method: 'POST',
         body: formData,
       })
@@ -344,10 +341,10 @@ export function ChatUI() {
     try {
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
-      const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
-      const userId = data?.user?.id || 'default-user';
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'default-user';
 
-      const createRes = await fetch(`${baseUrl}/api/chat/sessions?user_id=${userId}&title=${encodeURIComponent(defaultTitle.substring(0, 30))}`, {
+      const createRes = await fetchWithAuth(`${baseUrl}/api/chat/sessions?user_id=${userId}&title=${encodeURIComponent(defaultTitle.substring(0, 30))}`, {
         method: 'POST'
       });
       if (createRes.ok) {
@@ -483,7 +480,7 @@ export function ChatUI() {
           formData.append('session_id', activeSessionId);
           formData.append('user_id', currentUserId);
 
-          const res = await fetch(`${baseUrl}/api/documents/upload`, {
+          const res = await fetchWithAuth(`${baseUrl}/api/documents/upload`, {
             method: 'POST',
             body: formData,
           });
@@ -501,7 +498,7 @@ export function ChatUI() {
           // Give background OCR up to 4s to extract text
           for (let i = 0; i < 10; i++) {
             try {
-              const stRes = await fetch(`${baseUrl}/api/documents/${docIdToUse}/status`);
+              const stRes = await fetchWithAuth(`${baseUrl}/api/documents/${docIdToUse}/status`);
               if (stRes.ok) {
                 const stData = await stRes.json();
                 if (stData.processing_status === 'completed' || stData.processing_status === 'failed') {
@@ -514,7 +511,7 @@ export function ChatUI() {
         }
       }
 
-      const response = await fetch(`${baseUrl}/api/chat/stream`, {
+      const response = await fetchWithAuth(`${baseUrl}/api/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -526,6 +523,9 @@ export function ChatUI() {
         signal: abortControllerRef.current.signal
       });
 
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
       if (!response.body) throw new Error("No response body");
 
       const reader = response.body.getReader();
@@ -617,91 +617,7 @@ export function ChatUI() {
     }))
   }
 
-  // --- Share with Doctor ---
-  const handleShareWithDoctor = async () => {
-    setIsSharing(true)
-    try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
-        alert('Please log in to share medical data with your doctor.');
-        setIsSharing(false);
-        return;
-      }
-
-      const token = crypto.randomUUID();
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-      // Fetch user profile if available
-      let profile: any = {};
-      try {
-        const { data: prof } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
-        if (prof) profile = prof;
-      } catch {}
-
-      // Fetch active prescriptions
-      let prescriptions: any[] = [];
-      try {
-        const pRes = await fetch(`${baseUrl}/api/chat/prescriptions?user_id=${user.id}`);
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          if (pData.data) prescriptions = pData.data;
-        }
-      } catch {}
-
-      // Fetch metrics if profile has id
-      let metrics: any[] = [];
-      if (profile?.id) {
-        try {
-          const { data: met } = await supabase.from('metrics').select('*').eq('profile_id', profile.id);
-          if (met) metrics = met;
-        } catch {}
-      }
-
-      try {
-        const res = await fetch(`${baseUrl}/api/chat/doctor-links`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token,
-            user_id: user.id,
-            userName: user.user_metadata?.full_name || profile?.full_name || 'Patient',
-            profile,
-            metrics,
-            prescriptions
-          })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.token) {
-            setShareLink(`${window.location.origin}/shared/${data.token}`);
-            setShareCopied(false);
-            setIsSharing(false);
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn("Doctor link API notice:", err);
-      }
-
-      setShareLink(`${window.location.origin}/shared/${token}`);
-      setShareCopied(false);
-    } catch (e) {
-      console.error("Error creating doctor share link:", e);
-    } finally {
-      setIsSharing(false);
-    }
-  }
-
-  const copyShareLink = () => {
-    if (!shareLink) return
-    navigator.clipboard.writeText(shareLink)
-    setShareCopied(true)
-    setTimeout(() => setShareCopied(false), 2000)
-  }
 
   // Render markdown helper for AI responses
   const renderFormattedAiContent = (text: string) => {
@@ -800,18 +716,6 @@ export function ChatUI() {
         </div>
 
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <button
-            onClick={handleShareWithDoctor}
-            disabled={isSharing}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-sky-50 hover:bg-sky-100 text-[#0284C7] border border-sky-200/70 text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer disabled:opacity-60"
-          >
-            {isSharing ? (
-              <div className="w-3.5 h-3.5 border-2 border-[#0284C7] border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Share2 size={15} />
-            )}
-            <span>Share with Doctor</span>
-          </button>
 
           <button
             onClick={() => {
@@ -1291,64 +1195,6 @@ export function ChatUI() {
         </div>
       </div>
 
-      {/* Share Link Modal Dialog */}
-      {shareLink && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-sky-50 text-[#0284C7] flex items-center justify-center border border-sky-100">
-                  <Share2 size={18} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-800">Share with Doctor</h3>
-                  <p className="text-xs text-slate-400">Secure Read-Only Access</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShareLink('')} 
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Share this secure link with your healthcare provider. It grants temporary read-only access to your health summary, lab reports, and prescriptions. Valid for 7 days.
-              </p>
-              
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2 rounded-2xl">
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={shareLink}
-                  className="bg-transparent border-none outline-none text-slate-700 w-full px-2 text-xs font-mono select-all"
-                />
-                <button 
-                  onClick={copyShareLink}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${shareCopied ? 'bg-emerald-500 text-white shadow-sm' : 'bg-[#0284C7] hover:bg-[#0369A1] text-white shadow-sm'}`}
-                >
-                  {shareCopied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                <span className="text-slate-400 flex items-center gap-1">
-                  <Sparkles size={12} className="text-amber-500" /> Auto-expires in 7 days
-                </span>
-                <a 
-                  href={shareLink} 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="text-[#0284C7] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  Preview Portal <ArrowRight size={12} />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

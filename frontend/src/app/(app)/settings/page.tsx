@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { User, Mail, Bell, Shield, Key, Clock, Calendar, Droplets, Check } from 'lucide-react'
+import { fetchWithAuth } from '@/lib/api';
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -62,7 +63,7 @@ export default function SettingsPage() {
 
         if (userId) {
           const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-          await fetch(`${baseUrl}/api/notifications/unsubscribe`, {
+          await fetchWithAuth(`${baseUrl}/api/notifications/unsubscribe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId })
@@ -123,7 +124,7 @@ export default function SettingsPage() {
         }
 
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-        await fetch(`${baseUrl}/api/notifications/subscribe`, {
+        await fetchWithAuth(`${baseUrl}/api/notifications/subscribe`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -144,6 +145,29 @@ export default function SettingsPage() {
       alert("Failed to enable notifications: " + e.message)
     } finally {
       setIsTogglingPush(false)
+    }
+  }
+
+  const [isTestingPush, setIsTestingPush] = useState(false)
+  const handleTestNotification = async () => {
+    if (!userId) return;
+    setIsTestingPush(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetchWithAuth(`${baseUrl}/api/notifications/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to send test notification");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert("Error: " + e.message);
+    } finally {
+      setIsTestingPush(false);
     }
   }
 
@@ -181,14 +205,32 @@ export default function SettingsPage() {
 
           // 1. Fetch profile from Supabase
           try {
-            const { data: profData } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle()
-            if (isMounted && profData) {
+            const { data: profData, error } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle()
+            if (isMounted && profData && !error) {
               if (profData.age) setAge(profData.age.toString())
               if (profData.gender) setGender(profData.gender)
               if (profData.blood_group) setBloodGroup(profData.blood_group)
+            } else {
+              throw new Error("No data or error from supabase")
             }
           } catch (err) {
-            console.warn("Notice reading profile from Supabase:", err)
+            // Fallback to backend API
+            if (isMounted) {
+              try {
+                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                const res = await fetchWithAuth(`${baseUrl}/api/chat/profile?user_id=${user.id}`);
+                if (res.ok) {
+                  const result = await res.json();
+                  if (result.data) {
+                    if (result.data.age) setAge(result.data.age.toString())
+                    if (result.data.gender) setGender(result.data.gender)
+                    if (result.data.blood_group) setBloodGroup(result.data.blood_group)
+                  }
+                }
+              } catch (apiErr) {
+                console.warn("Notice reading profile from backend:", apiErr)
+              }
+            }
           }
         }
       } catch (err) {
@@ -260,7 +302,7 @@ export default function SettingsPage() {
         const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        await fetch(`${baseUrl}/api/chat/profile`, {
+        await fetchWithAuth(`${baseUrl}/api/chat/profile`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -545,6 +587,18 @@ export default function SettingsPage() {
                          </button>
                        </div>
                     </div>
+
+                    {pushStatus === 'Enabled' && (
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={handleTestNotification}
+                          disabled={isTestingPush}
+                          className="px-4 py-2 bg-sky-50 text-sky-600 hover:bg-sky-100 font-semibold text-xs rounded-xl transition-all border border-sky-200/60 flex items-center gap-2"
+                        >
+                          {isTestingPush ? 'Sending...' : 'Send Test Notification'}
+                        </button>
+                      </div>
+                    )}
                 </div>
               )}
 

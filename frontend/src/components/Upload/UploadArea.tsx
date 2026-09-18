@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react'
 import { UploadCloud, File, CheckCircle, Clock, FileText, Image as ImageIcon, MessageSquare } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { fetchWithAuth } from '@/lib/api';
 
 interface UploadedFile {
   id?: string
@@ -17,29 +18,11 @@ export function UploadArea() {
   const [isDragging, setIsDragging] = useState(false)
   const [files, setFiles] = useState<UploadedFile[]>([])
 
-  const onDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }, [])
-
-  const onDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-  }, [])
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(Array.from(e.dataTransfer.files))
-    }
-  }, [])
-
   const pollStatus = async (docId: string, fileIndex: number) => {
     const interval = setInterval(async () => {
       try {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${baseUrl}/api/documents/${docId}/status`)
+        const res = await fetchWithAuth(`${baseUrl}/api/documents/${docId}/status`)
         if (res.ok) {
           const data = await res.json()
           if (data.processing_status === 'completed' || data.processing_status === 'failed') {
@@ -57,7 +40,7 @@ export function UploadArea() {
     }, 2000)
   }
 
-  const handleFiles = async (newFiles: File[]) => {
+  async function handleFiles(newFiles: File[]) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     const currentUserId = user?.id || 'default-user'
@@ -87,7 +70,7 @@ export function UploadArea() {
       try {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         // Create a new chat session for this report
-        const sessionRes = await fetch(`${baseUrl}/api/chat/sessions?user_id=${currentUserId}&title=Report:%20${encodeURIComponent(f.name.substring(0, 30))}`, { method: 'POST' })
+        const sessionRes = await fetchWithAuth(`${baseUrl}/api/chat/sessions?user_id=${currentUserId}&title=Report:%20${encodeURIComponent(f.name.substring(0, 30))}`, { method: 'POST' })
         const session = await sessionRes.json()
 
         const formData = new FormData()
@@ -98,34 +81,66 @@ export function UploadArea() {
         setFiles(prev => {
           const arr = [...prev]
           arr[arr.length - 1].status = 'processing'
+          arr[arr.length - 1].sessionId = session.id
           return arr
         })
 
-        const uploadRes = await fetch(`${baseUrl}/api/documents/upload`, {
+        const res = await fetchWithAuth(`${baseUrl}/api/documents/upload`, {
           method: 'POST',
-          body: formData
+          body: formData,
         })
-        const uploadData = await uploadRes.json()
-
-        if (uploadData.document_id) {
+        
+        if (res.ok) {
+          const data = await res.json()
           setFiles(prev => {
             const arr = [...prev]
-            arr[arr.length - 1].id = uploadData.document_id
-            arr[arr.length - 1].sessionId = session.id
+            if (data.document_id) arr[fileIndex].id = data.document_id
             return arr
           })
-          pollStatus(uploadData.document_id, fileIndex)
+          if (data.status === 'processing') {
+            pollStatus(data.document_id, fileIndex)
+          } else {
+            setFiles(prev => {
+              const arr = [...prev]
+              arr[fileIndex].status = 'completed'
+              return arr
+            })
+          }
+        } else {
+          setFiles(prev => {
+            const arr = [...prev]
+            arr[fileIndex].status = 'failed'
+            return arr
+          })
         }
-      } catch (error) {
-        console.error("Upload failed", error)
+      } catch (e) {
+        console.error("Upload error:", e)
         setFiles(prev => {
           const arr = [...prev]
-          arr[arr.length - 1].status = 'failed'
+          arr[fileIndex].status = 'failed'
           return arr
         })
       }
     }
   }
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }, [])
+
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }, [])
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(Array.from(e.dataTransfer.files))
+    }
+  }, [])
 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
