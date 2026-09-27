@@ -668,7 +668,7 @@ async def chat_stream(req: ChatRequest):
     except Exception:
         pass
 
-    # 3. Update session title if default or report-based
+    new_title_to_sync = None
     try:
         all_sessions = _load_json_file(SESSIONS_STORE_FILE)
         if clean_session_id in all_sessions:
@@ -677,23 +677,20 @@ async def chat_stream(req: ChatRequest):
                 clean_title = clean_message.strip().split("\n")[0][:35]
                 all_sessions[clean_session_id]["title"] = clean_title
                 _save_json_file(SESSIONS_STORE_FILE, all_sessions)
-                try:
-                    supabase.table("sessions").update({"title": clean_title}).eq("id", clean_session_id).execute()
-                except Exception:
-                    pass
+                new_title_to_sync = clean_title
     except Exception as e:
         logger.debug(f"Notice updating session title: {e}")
 
     def event_generator():
         try:
-            # 4. Fetch message history from local store and Supabase
+            # 4. Fetch message history from local store
             history_list = []
             all_messages = _load_json_file(MESSAGES_STORE_FILE)
             local_msgs = all_messages.get(clean_session_id, [])
             for m in local_msgs:
                 history_list.append({"sender_type": m.get("sender_type"), "content": m.get("content")})
             
-            # Save user message locally
+            # Save user message locally immediately
             user_msg_obj = {
                 "id": str(uuid.uuid4()),
                 "session_id": clean_session_id,
@@ -706,16 +703,7 @@ async def chat_stream(req: ChatRequest):
             all_messages[clean_session_id].append(user_msg_obj)
             _save_json_file(MESSAGES_STORE_FILE, all_messages)
             
-            # Also try saving to Supabase
-            try:
-                supabase.table("messages").insert({
-                    "session_id": clean_session_id,
-                    "sender_type": "user",
-                    "content": clean_message
-                }).execute()
-            except Exception as me:
-                pass
-            
+            # Immediately start streaming tokens without waiting for DB writes
             full_ai_response = ""
             for token in generate_chat_stream(clean_message, extracted_text, clean_lang, medical_history, history_list):
                 full_ai_response += token
@@ -735,13 +723,14 @@ async def chat_stream(req: ChatRequest):
             all_messages[clean_session_id].append(ai_msg_obj)
             _save_json_file(MESSAGES_STORE_FILE, all_messages)
             
-            # Also try saving AI message to Supabase
+            # Sync user message, AI message, and title to Supabase in background
             try:
-                supabase.table("messages").insert({
-                    "session_id": clean_session_id,
-                    "sender_type": "ai",
-                    "content": full_ai_response
-                }).execute()
+                supabase.table("messages").insert([
+                    {"session_id": clean_session_id, "sender_type": "user", "content": clean_message},
+                    {"session_id": clean_session_id, "sender_type": "ai", "content": full_ai_response}
+                ]).execute()
+                if new_title_to_sync:
+                    supabase.table("sessions").update({"title": new_title_to_sync}).eq("id", clean_session_id).execute()
             except Exception as me:
                 pass
             

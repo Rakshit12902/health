@@ -31,10 +31,8 @@ DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 FALLBACK_MODELS = [
     DEFAULT_MODEL,
     "openai/gpt-oss-120b",
-    "openai/gpt-oss-20b",
-    "qwen/qwen3.6-27b",
     "qwen/qwen3.8-27b",
-    "groq/compound"
+    "openai/gpt-oss-20b",
 ]
 
 SYSTEM_PROMPT = """You are **CuraMind AI**, a professional, empathetic, and reliable AI healthcare assistant.

@@ -71,7 +71,7 @@ export function ClinicMap() {
     setLoading(true);
 
     try {
-      const res = await fetchWithAuth(`/api/chat/clinics?lat=${lat}&lon=${lon}`);
+      const res = await fetchWithAuth(`/api/clinics?lat=${lat}&lon=${lon}`);
       if (res.ok) {
         const data = await res.json();
         if (activeRef.current && data.clinics && data.clinics.length > 0) {

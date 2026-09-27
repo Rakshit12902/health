@@ -129,6 +129,7 @@ app = FastAPI(title="CuraMind API", lifespan=lifespan)
 
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
 allowed_origins = [
+    "https://curamind-mu.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:8000",
@@ -143,7 +144,7 @@ if cors_origins_env:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

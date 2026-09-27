@@ -453,7 +453,8 @@ export function ChatUI() {
     setMessages((prev) => [...prev, { id: aiMsgId, role: 'ai', content: '', time: currentTime }]);
 
     let fullAiResponse = "";
-    abortControllerRef.current = new AbortController();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -495,8 +496,8 @@ export function ChatUI() {
           setCurrentDocId(docIdToUse);
           window.history.replaceState({}, '', `/chat?session=${activeSessionId}&doc=${docIdToUse}`);
 
-          // Give background OCR up to 4s to extract text
-          for (let i = 0; i < 10; i++) {
+          // Give background OCR up to 1.5s to extract text
+          for (let i = 0; i < 5; i++) {
             try {
               const stRes = await fetchWithAuth(`${baseUrl}/api/documents/${docIdToUse}/status`);
               if (stRes.ok) {
@@ -506,10 +507,13 @@ export function ChatUI() {
                 }
               }
             } catch (_) {}
-            await new Promise((r) => setTimeout(r, 400));
+            await new Promise((r) => setTimeout(r, 300));
           }
         }
       }
+
+      const activeController = abortControllerRef.current || controller;
+      abortControllerRef.current = activeController;
 
       const response = await fetchWithAuth(`${baseUrl}/api/chat/stream`, {
         method: 'POST',
@@ -520,7 +524,7 @@ export function ChatUI() {
           language: 'en',
           document_id: docIdToUse || undefined
         }),
-        signal: abortControllerRef.current.signal
+        signal: activeController.signal
       });
 
       if (!response.ok) {
